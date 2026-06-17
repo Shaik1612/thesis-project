@@ -1,0 +1,300 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply font-body text-ink-900 bg-surface-50 antialiased;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body[data-zone='kitchen'] {
+    @apply bg-kds-bg text-kds-text;
+  }
+  body[data-zone='customer'],
+  body[data-zone='staff'] {
+    @apply bg-surface-50 text-ink-900;
+  }
+  h1, h2, h3, h4 {
+    @apply font-display tracking-tight;
+  }
+  h1 { letter-spacing: -0.02em; }
+  h2 { letter-spacing: -0.018em; }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-surface-50;
+  }
+  body[data-zone='kitchen'] *:focus-visible {
+    @apply ring-offset-kds-bg;
+  }
+  body[data-zone='staff'] *:focus-visible {
+    @apply ring-offset-surface-0;
+  }
+
+  img { max-width: 100%; display: block; }
+  ::selection { background: rgb(234 88 12 / 0.22); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  .skeleton {
+    background-image: linear-gradient(
+      90deg,
+      theme('colors.surface.100') 0%,
+      theme('colors.surface.50') 50%,
+      theme('colors.surface.100') 100%
+    );
+    background-size: 800px 100%;
+    @apply animate-shimmer rounded-lg;
+  }
+
+  /* Minimum-48px tap target (WCAG 2.5.5). Compose with bg/padding. */
+  .touch-target {
+    @apply min-h-12 min-w-12;
+  }
+  .touch-target-xl {
+    @apply min-h-16 min-w-16;
+  }
+
+  /* Thin, subtle scrollbar for desktop dense surfaces. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.surface.line') transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: theme('colors.surface.line');
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.ink.400');
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+
+  /* Accessibility: visually hidden but reachable by AT. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Kiosk + customer-surface heat: hero gradient + grain for appetite. */
+  .heat-surface {
+    background-image:
+      radial-gradient(120% 80% at 0% 0%, rgb(255 246 237 / 0.9), transparent 60%),
+      radial-gradient(80%  60% at 100% 100%, rgb(254 215 170 / 0.55), transparent 60%),
+      theme('colors.surface.50');
+  }
+  .heat-surface::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: theme('backgroundImage.grain');
+    mix-blend-mode: multiply;
+    opacity: 0.6;
+    z-index: 0;
+  }
+
+  /* Linear-tier dense surface for desktop POS / admin. */
+  .pos-surface {
+    background:
+      radial-gradient(800px 400px at 100% 0%, rgb(255 244 237 / 0.4), transparent 70%),
+      theme('colors.surface.50');
+  }
+
+  /* —— Desk console (Service Floor) —— */
+
+  /* Cross-hatched canvas — a faint grid like a docket pad. */
+  .console-canvas {
+    background-color: #FAF7F2;
+    background-image:
+      linear-gradient(to right,  rgb(28 25 23 / 0.035) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(28 25 23 / 0.035) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* The fixed operator strip — deep ink slab, mono numerics. */
+  .console-strip {
+    background:
+      linear-gradient(180deg, #1C1917 0%, #15110F 100%);
+    color: theme('colors.surface.50');
+    box-shadow:
+      inset 0 -1px 0 rgb(255 255 255 / 0.06),
+      0 1px 0 rgb(0 0 0 / 0.04);
+  }
+
+  /* A KOT-style ticket with perforated bottom edge (sawtooth). */
+  .docket {
+    background: theme('colors.surface.0');
+    box-shadow:
+      0 1px 0 theme('colors.surface.line'),
+      0 8px 24px -16px rgb(28 25 23 / 0.18);
+    position: relative;
+  }
+  .docket::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -10px;
+    height: 10px;
+    background-image: radial-gradient(circle at 6px 0, theme('colors.surface.0') 5px, transparent 5.5px);
+    background-size: 12px 10px;
+    background-repeat: repeat-x;
+    background-position: 0 -5px;
+    filter: drop-shadow(0 2px 0 theme('colors.surface.line'));
+  }
+
+  /* Top-perforated header strip — pretend it's torn from the dispenser. */
+  .docket-perf-top {
+    background-image: radial-gradient(circle at 6px 100%, theme('colors.surface.0') 5px, transparent 5.5px);
+    background-size: 12px 10px;
+    background-repeat: repeat-x;
+    background-position: 0 5px;
+    height: 10px;
+  }
+
+  /* Channel chip — flat color rail + uppercase mono tag. */
+  .channel-chip {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em];
+    font-family: theme('fontFamily.mono');
+  }
+  .channel-chip[data-channel='qr']     { @apply bg-emerald-500/10 text-emerald-700 ring-1 ring-inset ring-emerald-500/20; }
+  .channel-chip[data-channel='kiosk']  { @apply bg-sky-500/10     text-sky-700     ring-1 ring-inset ring-sky-500/20;     }
+  .channel-chip[data-channel='web']    { @apply bg-violet-500/10  text-violet-700  ring-1 ring-inset ring-violet-500/20;  }
+  .channel-chip[data-channel='desk']   { @apply bg-amber-500/10   text-amber-700   ring-1 ring-inset ring-amber-500/20;   }
+
+  /* A glowing-amber slab for "money waiting" — used in pending cash. */
+  .amount-slab {
+    font-family: theme('fontFamily.mono');
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+    letter-spacing: -0.02em;
+  }
+  .amount-slab-hot {
+    background:
+      radial-gradient(120% 100% at 50% 0%, rgb(245 158 11 / 0.18), transparent 70%),
+      theme('colors.surface.0');
+    box-shadow: inset 0 0 0 1px rgb(245 158 11 / 0.35);
+  }
+
+  /* Sidebar pill button in the operator strip. */
+  .strip-nav {
+    @apply relative flex h-11 items-center gap-2.5 rounded-lg px-3 text-[13px] font-semibold transition-colors;
+    color: rgb(245 245 244 / 0.7);
+  }
+  .strip-nav:hover     { color: theme('colors.surface.0'); background: rgb(255 255 255 / 0.06); }
+  .strip-nav[aria-current='page'] {
+    background: rgb(255 255 255 / 0.10);
+    color: theme('colors.surface.0');
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  }
+  .strip-nav[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    left: 6px; right: 6px; bottom: -1px;
+    height: 2px; border-radius: 2px;
+    background: theme('colors.brand.500');
+  }
+
+  /* Big bold readout used in cash modal and drawer header. */
+  .readout {
+    font-family: theme('fontFamily.mono');
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+    letter-spacing: -0.025em;
+  }
+
+  /* Subtle ledger row — dotted leader, big amount on right. */
+  .ledger-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+  }
+  .ledger-row > .ledger-leader {
+    flex: 1;
+    border-bottom: 1px dotted theme('colors.surface.line');
+    transform: translateY(-4px);
+  }
+
+  /* Heartbeat dot — bigger more deliberate pulse than live-dot. */
+  .heartbeat::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.35;
+    animation: tap-pulse 1.8s ease-out infinite;
+  }
+  .heartbeat { position: relative; }
+
+  /* Sharp keyboard hint glyph styling — Linear / Vercel feel. */
+  .kbd {
+    @apply inline-flex items-center justify-center rounded-md border border-surface-line bg-surface-0 px-1.5 text-[11px] font-medium text-ink-600 shadow-sm;
+    min-height: 20px;
+    line-height: 1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  /* A divider that breathes — used in checkout summaries. */
+  .hairline {
+    @apply border-t border-dashed border-surface-line;
+  }
+
+  /* Pulsing status dot — lightweight, no JS. */
+  .live-dot {
+    position: relative;
+  }
+  .live-dot::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 999px;
+    background: currentColor;
+    opacity: 0.4;
+    animation: tap-pulse 1.6s ease-out infinite;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .text-pretty  { text-wrap: pretty; }
+  .safe-bottom  { padding-bottom: max(env(safe-area-inset-bottom), 1rem); }
+  .safe-top     { padding-top: max(env(safe-area-inset-top), 0.5rem); }
+}

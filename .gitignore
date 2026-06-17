@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local env files — NEVER commit these, they contain real secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+supabase/functions/.env.local
+
+# Supabase local state
+supabase/.branches/
+supabase/.temp/
+
+# OS
+.DS_Store
+Thumbs.db
