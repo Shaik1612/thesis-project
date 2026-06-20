@@ -19,6 +19,10 @@ serve(async (req) => {
   }
 
   try {
+    if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
+      return error(401, 'payment provider credentials are not configured')
+    }
+
     const body = await req.json()
     const {
       items,
@@ -196,6 +200,9 @@ serve(async (req) => {
     }
 
     const amountPaise = Math.round(total_amount * 100)
+    if (amountPaise < 100) {
+      return error(400, 'amount must be at least 100 paise')
+    }
 
     // --- Create Razorpay order ---
     const rzpAuth = btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`)
@@ -218,6 +225,9 @@ serve(async (req) => {
     if (!rzpRes.ok) {
       const rzpErr = await rzpRes.text()
       console.error('Razorpay error:', rzpErr)
+      if (rzpRes.status === 401) {
+        return error(401, 'payment provider authentication failed')
+      }
       return error(502, 'payment provider error')
     }
 
@@ -262,9 +272,12 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
+        order_id:          rzpOrder.id,
         razorpay_order_id: rzpOrder.id,
         razorpay_key_id:   RAZORPAY_KEY_ID,
+        amount:            amountPaise,
         amount_paise:      amountPaise,
+        currency:          'INR',
         total_amount,
         gst_amount,
         gst_rate:          settings.gst_rate,
