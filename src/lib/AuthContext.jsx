@@ -23,7 +23,10 @@ export function AuthProvider({ children }) {
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password })
 
-  const signOut = () => supabase.auth.signOut()
+  const signOut = async () => {
+    setSession(null)
+    return supabase.auth.signOut()
+  }
 
   const user = session?.user ?? null
   // RLS reads app_metadata.role (see migration 013). user_metadata is editable

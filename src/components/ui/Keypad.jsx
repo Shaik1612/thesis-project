@@ -24,6 +24,7 @@ export default function Keypad({ value = '', onChange, maxLength = 14, allowDeci
           className={[
             'flex h-16 items-center justify-center rounded-lg bg-surface-100 text-2xl font-display font-bold num',
             'active:bg-surface-line active:scale-[0.97] transition-all duration-150',
+            'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-0',
             k === 'back' ? 'text-ink-600' : 'text-ink-900',
             !allowDecimal && k === '.' ? 'opacity-30 pointer-events-none' : '',
           ].join(' ')}

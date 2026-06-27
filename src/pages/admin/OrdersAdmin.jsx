@@ -53,11 +53,11 @@ export default function OrdersAdmin() {
   return (
     <AdminPage
       title="Orders"
-      subtitle="Every order across every channel, updated in realtime."
+      subtitle="Every order across every channel."
       action={
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-status-ready/12 px-3 py-1 text-xs font-semibold text-status-ready">
-          <span className="h-1.5 w-1.5 rounded-full bg-status-ready live-dot text-status-ready" />
-          Live · {filtered.length}
+        <span className="inline-flex items-center gap-2 rounded-md border border-surface-line bg-surface-0 px-2.5 py-1 text-xs font-medium text-ink-600">
+          <span className="h-1.5 w-1.5 rounded-full bg-status-ready" />
+          {filtered.length} shown
         </span>
       }
     >
@@ -87,7 +87,7 @@ export default function OrdersAdmin() {
               </ul>
             </div>
             <div className="space-y-3">
-              <div className="rounded-2xl bg-surface-100 p-3">
+              <div className="rounded-lg border border-surface-line bg-surface-50 p-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-ink-500">Channel</p>
                 <p className="font-semibold uppercase text-ink-900">{o.channel}</p>
                 <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-ink-500">Type</p>
@@ -152,7 +152,7 @@ function RefundsForOrder({ orderId }) {
   if (refunds.length === 0) return null
 
   return (
-    <div className="rounded-2xl bg-surface-100 p-3">
+    <div className="rounded-lg border border-surface-line bg-surface-50 p-3">
       <p className="text-xs font-semibold uppercase tracking-wider text-ink-500">Refunds</p>
       <ul className="mt-2 space-y-2">
         {refunds.map((r) => {

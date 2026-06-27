@@ -601,6 +601,176 @@ $$;
 revoke all on function award_loyalty_for_order(text, numeric, integer) from public;
 grant execute on function award_loyalty_for_order(text, numeric, integer) to service_role, authenticated;
 
+-- Reissue desk-only refund/reprint helpers after dropping table/session columns.
+-- The 018 versions wrote desk_audit_events.session_id, which no longer exists.
+create or replace function cancel_paid_cash_order(
+  p_order_id uuid,
+  p_reason text,
+  p_refund_amount numeric default null
+)
+returns orders
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text := auth_role();
+  v_staff_id uuid := auth.uid();
+  v_order orders;
+  v_settings record;
+  v_pre_discount_due numeric(10,2);
+  v_total_due numeric(10,2);
+  v_refund numeric(10,2);
+begin
+  if v_role not in ('admin', 'employee') then
+    raise exception 'Only desk staff can cancel paid cash orders';
+  end if;
+
+  if nullif(trim(coalesce(p_reason, '')), '') is null then
+    raise exception 'Cancellation reason is required';
+  end if;
+
+  select * into v_order
+  from orders
+  where id = p_order_id
+  for update;
+
+  if v_order.id is null then
+    raise exception 'Order not found';
+  end if;
+
+  if v_order.status in ('completed', 'cancelled') then
+    raise exception 'Order is already closed';
+  end if;
+
+  if v_order.payment_method <> 'cash' or v_order.payment_status <> 'paid' then
+    raise exception 'Only paid cash orders use this cancellation path';
+  end if;
+
+  select * into v_settings from restaurant_settings limit 1;
+  v_pre_discount_due := order_payable_amount(
+    v_order.total_amount,
+    v_order.gst_amount,
+    coalesce(v_settings.gst_inclusive, false)
+  );
+  v_total_due := round(greatest(0, v_pre_discount_due - coalesce(v_order.discount_amount, 0)), 2);
+  v_refund := coalesce(p_refund_amount, v_total_due);
+
+  if v_refund < 0 or v_refund > v_total_due then
+    raise exception 'Invalid refund amount';
+  end if;
+
+  update orders
+  set status = 'cancelled'
+  where id = v_order.id
+  returning * into v_order;
+
+  if v_refund > 0 then
+    insert into refunds(order_id, amount, reason, status, initiated_by)
+    values (v_order.id, v_refund, p_reason, 'processed', v_staff_id);
+  end if;
+
+  update payments
+  set status = case when v_refund >= v_total_due then 'refunded' else status end
+  where order_id = v_order.id
+    and method = 'cash'
+    and status = 'paid';
+
+  insert into desk_audit_events(actor_id, event_type, order_id, payload)
+  values (
+    v_staff_id,
+    'paid_cash_order_cancelled',
+    v_order.id,
+    jsonb_build_object(
+      'reason', p_reason,
+      'total_due', v_total_due,
+      'refund_amount', v_refund
+    )
+  );
+
+  return v_order;
+end;
+$$;
+
+revoke all on function cancel_paid_cash_order(uuid, text, numeric) from public;
+grant execute on function cancel_paid_cash_order(uuid, text, numeric) to authenticated;
+
+create or replace function reprint_order_invoice(
+  p_order_id uuid
+)
+returns print_jobs
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text := auth_role();
+  v_staff_id uuid := auth.uid();
+  v_order orders;
+  v_job print_jobs;
+begin
+  if v_role not in ('admin', 'employee') then
+    raise exception 'Only staff can reprint invoices';
+  end if;
+
+  select * into v_order
+  from orders
+  where id = p_order_id;
+
+  if v_order.id is null then
+    raise exception 'Order not found';
+  end if;
+
+  if v_order.payment_status <> 'paid' then
+    raise exception 'Only paid orders can be reprinted';
+  end if;
+
+  insert into print_jobs(type, order_id, payload)
+  select
+    'invoice',
+    v_order.id,
+    jsonb_build_object(
+      'order_id',                 v_order.id,
+      'reprint',                  true,
+      'channel',                  v_order.channel,
+      'payment_method',           v_order.payment_method,
+      'total_amount',             v_order.total_amount,
+      'discount_amount',          v_order.discount_amount,
+      'coupon_code',              v_order.coupon_code,
+      'loyalty_points_redeemed',  v_order.loyalty_points_redeemed,
+      'gst_rate',                 v_order.gst_rate,
+      'gst_amount',               v_order.gst_amount,
+      'created_at',               v_order.created_at,
+      'items',                    (
+        select jsonb_agg(jsonb_build_object(
+          'name',         mi.name,
+          'variant_name', oi.variant_name,
+          'quantity',     oi.quantity,
+          'unit_price',   oi.unit_price,
+          'subtotal',     oi.subtotal
+        ))
+        from order_items oi
+        join menu_items mi on mi.id = oi.menu_item_id
+        where oi.order_id = v_order.id
+      )
+    )
+  returning * into v_job;
+
+  insert into desk_audit_events(actor_id, event_type, order_id, payload)
+  values (
+    v_staff_id,
+    'invoice_reprint_requested',
+    v_order.id,
+    jsonb_build_object('print_job_id', v_job.id)
+  );
+
+  return v_job;
+end;
+$$;
+
+revoke all on function reprint_order_invoice(uuid) from public;
+grant execute on function reprint_order_invoice(uuid) to authenticated;
+
 -- ------------------------------------------------------------
 -- 10. Backfill table-level grants
 --

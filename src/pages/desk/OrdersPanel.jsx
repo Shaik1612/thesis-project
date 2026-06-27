@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Check, CookingPot, PackageCheck, XCircle, Search, ReceiptText, Eye,
+  CookingPot, PackageCheck, XCircle, Search, ReceiptText, Eye, RotateCcw,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useSettings } from '../../lib/SettingsContext'
@@ -13,13 +13,38 @@ import { timeAgo, humanizeError } from './shared'
 
 const STATUS_TABS = [
   { value: 'all',        label: 'All' },
-  { value: 'pending',    label: 'Pending' },
-  { value: 'accepted',   label: 'Accepted' },
-  { value: 'preparing',  label: 'Preparing' },
+  { value: 'to_cook',    label: 'To cook' },
   { value: 'ready',      label: 'Ready' },
   { value: 'completed',  label: 'Completed' },
   { value: 'cancelled',  label: 'Cancelled' },
 ]
+const TO_COOK = ['pending', 'accepted', 'preparing']
+
+function statusGroup(status) {
+  if (TO_COOK.includes(status)) return 'to_cook'
+  return status
+}
+
+function statusLabel(status) {
+  if (TO_COOK.includes(status)) return 'To cook'
+  if (status === 'ready') return 'Ready'
+  if (status === 'completed') return 'Completed'
+  if (status === 'cancelled') return 'Cancelled'
+  return status
+}
+
+function nextStatus(status) {
+  if (status === 'pending' || status === 'accepted') return 'preparing'
+  if (status === 'preparing') return 'ready'
+  if (status === 'ready') return 'completed'
+  return null
+}
+
+function refundedAmount(order) {
+  return (order.refunds ?? [])
+    .filter((r) => r.status === 'processed')
+    .reduce((sum, r) => sum + Number(r.amount ?? 0), 0)
+}
 
 export default function OrdersPanel() {
   const settings = useSettings()
@@ -36,7 +61,7 @@ export default function OrdersPanel() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     return orders.filter((o) => {
-      if (status !== 'all' && o.status !== status) return false
+      if (status !== 'all' && statusGroup(o.status) !== status) return false
       if (!q) return true
       const haystack = [
         o.id,
@@ -52,7 +77,7 @@ export default function OrdersPanel() {
 
   const items = STATUS_TABS.map((t) => ({
     ...t,
-    count: t.value === 'all' ? orders.length : orders.filter((o) => o.status === t.value).length,
+    count: t.value === 'all' ? orders.length : orders.filter((o) => statusGroup(o.status) === t.value).length,
   }))
 
   async function updateStatus(order, nextStatus) {
@@ -81,9 +106,10 @@ export default function OrdersPanel() {
 
   function startCancel(order) {
     const payable = payableAmount(order, settings.gstInclusive)
+    const remaining = Math.max(0, payable - refundedAmount(order))
     setCancelTarget(order)
     setCancelReason('')
-    setRefundAmount(order.payment_status === 'paid' && order.payment_method === 'cash' ? String(payable) : '')
+    setRefundAmount(order.payment_status === 'paid' && order.payment_method === 'cash' ? String(remaining) : '')
   }
 
   async function confirmCancel() {
@@ -92,7 +118,7 @@ export default function OrdersPanel() {
     try {
       let error
       if (cancelTarget.payment_status === 'paid' && cancelTarget.payment_method === 'cash') {
-        ;({ error } = await supabase.rpc('cancel_paid_cash_order', {
+        ;({ error } = await supabase.rpc('refund_paid_cash_order', {
           p_order_id: cancelTarget.id,
           p_reason: cancelReason.trim(),
           p_refund_amount: refundAmount === '' ? null : Number(refundAmount),
@@ -104,24 +130,35 @@ export default function OrdersPanel() {
           .eq('id', cancelTarget.id))
       }
       if (error) throw error
-      push({ type: 'success', title: 'Order cancelled' })
+      push({
+        type: 'success',
+        title: cancelTarget.payment_status === 'paid' && cancelTarget.payment_method === 'cash'
+          ? 'Order refunded'
+          : 'Order cancelled',
+      })
       setCancelTarget(null)
     } catch (e) {
-      const { message, details } = humanizeError(e, 'The order couldn\'t be cancelled. Refresh and try again.')
-      push({ type: 'error', title: 'Cancel failed', message, details })
+      const isRefund = cancelTarget.payment_status === 'paid' && cancelTarget.payment_method === 'cash'
+      const { message, details } = humanizeError(
+        e,
+        isRefund
+          ? 'The refund could not be processed. Refresh and try again.'
+          : 'The order could not be cancelled. Refresh and try again.',
+      )
+      push({ type: 'error', title: isRefund ? 'Refund failed' : 'Cancel failed', message, details })
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-thin console-canvas">
-      <div className="mx-auto max-w-7xl space-y-5 px-6 py-6">
+    <div className="h-full overflow-y-auto bg-surface-50 scrollbar-thin">
+      <div className="mx-auto max-w-7xl space-y-4 px-6 py-5 text-[15px] font-medium">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-700">Activity</p>
-            <h2 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">All orders</h2>
-            <p className="mt-1 text-sm text-ink-600">Live ticker across QR · kiosk · web · desk. Cancel, refund, reprint from here.</p>
+            <p className="text-sm font-semibold text-ink-700">Activity</p>
+            <h2 className="text-xl font-bold text-ink-900">All orders</h2>
+            <p className="mt-1 text-sm font-medium text-ink-600">Track KDS status, reprint invoices, and refund eligible cash orders.</p>
           </div>
           <div className="flex items-center gap-3">
             <Input
@@ -131,37 +168,40 @@ export default function OrdersPanel() {
               prefix={<Search className="h-4 w-4" />}
               wrapperClassName="w-[320px]"
             />
-            <span className="inline-flex items-center gap-2 rounded-full bg-surface-0 px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-ink-700 ring-1 ring-inset ring-surface-line">
+            <span className="inline-flex items-center gap-2 rounded-md bg-surface-0 px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-ink-700 ring-1 ring-inset ring-surface-line">
               <span className="relative h-1.5 w-1.5 rounded-full bg-status-ready text-status-ready heartbeat" />
               LIVE · {String(filtered.length).padStart(3, '0')}
             </span>
           </div>
         </header>
 
-        <Tabs variant="underline" items={items} value={status} onChange={setStatus} />
+        <Tabs variant="pill" size="lg" items={items} value={status} onChange={setStatus} />
 
         <DataTable
           ariaLabel="All orders"
+          headerClassName="border-b border-surface-line text-sm font-semibold text-ink-700"
           columns={[
-            { key: 'id',      header: 'Order',   width: '110px', mono: true, sortable: true, cell: (v) => <span className="font-mono text-xs font-bold">{orderCode(v)}</span> },
+            { key: 'id',      header: 'Order',   width: '110px', mono: true, sortable: true, cell: (v) => <span className="font-mono text-sm font-bold">{orderCode(v)}</span> },
             { key: 'channel', header: 'Channel', width: '110px', sortable: true, cell: (v) => <span className="channel-chip" data-channel={v}>{v}</span> },
-            { key: 'status',  header: 'Status',  width: '140px', sortable: true, cell: (v) => <StatusBadge status={v} /> },
+            { key: 'status',  header: 'KDS status',  width: '140px', sortable: true, cell: (v) => <StatusBadge status={v} label={statusLabel(v)} className="font-bold" /> },
             { key: 'payment_status', header: 'Payment', width: '160px',
               cell: (_, o) => (
                 <StatusBadge
                   status={o.payment_status === 'paid' ? 'paid' : 'unpaid'}
                   label={`${o.payment_status} · ${o.payment_method ?? '—'}`}
                   size="sm"
+                  className="font-bold"
                 />
               ) },
-            { key: 'created_at', header: 'Age', width: '120px', sortable: true, cell: (v) => <span className="font-mono text-xs text-ink-600">{timeAgo(v)}</span> },
+            { key: 'created_at', header: 'Age', width: '120px', sortable: true, cell: (v) => <span className="font-mono text-sm font-semibold text-ink-700">{timeAgo(v)}</span> },
             { key: 'amount', header: 'Amount', width: '140px', align: 'right', mono: true, sortable: true,
               accessor: (o) => payableAmount(o, settings.gstInclusive),
-              cell: (v) => <MoneyText amount={v} className="font-mono tabular-nums font-bold" /> },
-            { key: 'actions', header: 'Actions', width: '380px', align: 'right',
+              cell: (v) => <MoneyText amount={v} className="font-mono text-sm tabular-nums font-bold" /> },
+            { key: 'actions', header: 'Actions', width: '420px', align: 'right',
               cell: (_, o) => (
                 <OrderActions
                   order={o}
+                  gstInclusive={settings.gstInclusive}
                   onUpdate={updateStatus}
                   onDetail={setDetail}
                   onCancel={startCancel}
@@ -180,6 +220,7 @@ export default function OrdersPanel() {
         gstInclusive={settings.gstInclusive}
         onClose={() => setDetail(null)}
         onReprint={reprint}
+        onRefund={startCancel}
       />
 
       <CancelModal
@@ -188,7 +229,7 @@ export default function OrdersPanel() {
         setReason={setCancelReason}
         refundAmount={refundAmount}
         setRefundAmount={setRefundAmount}
-        payable={cancelTarget ? payableAmount(cancelTarget, settings.gstInclusive) : 0}
+        payable={cancelTarget ? Math.max(0, payableAmount(cancelTarget, settings.gstInclusive) - refundedAmount(cancelTarget)) : 0}
         busy={busy}
         onClose={() => setCancelTarget(null)}
         onConfirm={confirmCancel}
@@ -197,16 +238,17 @@ export default function OrdersPanel() {
   )
 }
 
-function OrderActions({ order, onUpdate, onDetail, onCancel, onReprint }) {
+function OrderActions({ order, gstInclusive, onUpdate, onDetail, onCancel, onReprint }) {
   const closed = order.status === 'cancelled' || order.status === 'completed'
-  const canCancel = !closed && order.status !== 'ready'
+  const next = nextStatus(order.status)
+  const canRefund = order.status !== 'cancelled'
+    && order.payment_status === 'paid'
+    && order.payment_method === 'cash'
+    && refundedAmount(order) < payableAmount(order, gstInclusive)
+  const canCancel = !closed && !canRefund
 
   return (
-    // Row layout: [forward actions ...] · [destructive].
-    // The destructive Cancel sits in its own slot with a visible separator and
-    // a low-fill outline treatment so it never reads as "the next button."
-    // Status-advance is the only filled action on the row.
-    <div className="flex items-center justify-end gap-1.5">
+    <div className="flex items-center justify-end gap-2">
       <Button variant="subtle" size="sm" onClick={() => onDetail(order)} iconLeft={<Eye className="h-4 w-4" />}>
         Details
       </Button>
@@ -215,36 +257,27 @@ function OrderActions({ order, onUpdate, onDetail, onCancel, onReprint }) {
           Reprint
         </Button>
       )}
-      {!closed && (
-        <>
-          {order.status === 'pending' && (
-            <Button variant="secondary" size="sm" onClick={() => onUpdate(order, 'accepted')} iconLeft={<Check className="h-4 w-4" />}>
-              Accept
-            </Button>
-          )}
-          {(order.status === 'accepted' || order.status === 'preparing') && (
-            <Button variant="secondary" size="sm" onClick={() => onUpdate(order, 'ready')} iconLeft={<CookingPot className="h-4 w-4" />}>
-              Ready
-            </Button>
-          )}
-          {order.status === 'ready' && (
-            <Button variant="primary" size="sm" onClick={() => onUpdate(order, 'completed')} iconLeft={<PackageCheck className="h-4 w-4" />}>
-              Complete
-            </Button>
-          )}
-        </>
+      {next && (
+        <Button
+          variant={next === 'completed' ? 'primary' : 'secondary'}
+          size="sm"
+          onClick={() => onUpdate(order, next)}
+          iconLeft={next === 'completed' ? <PackageCheck className="h-4 w-4" /> : <CookingPot className="h-4 w-4" />}
+        >
+          {next === 'preparing' ? 'Cooking' : next === 'ready' ? 'Ready' : 'Complete'}
+        </Button>
       )}
-      {canCancel && (
+      {(canRefund || canCancel) && (
         <>
           <span aria-hidden className="mx-1 h-5 w-px bg-surface-line" />
           <Button
             variant="outline"
             size="sm"
             onClick={() => onCancel(order)}
-            iconLeft={<XCircle className="h-4 w-4" />}
+            iconLeft={canRefund ? <RotateCcw className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
             className="text-status-cancelled ring-status-cancelled/30 hover:bg-status-cancelled/5 hover:ring-status-cancelled/40"
           >
-            Cancel
+            {canRefund ? 'Refund' : 'Cancel'}
           </Button>
         </>
       )}
@@ -252,7 +285,13 @@ function OrderActions({ order, onUpdate, onDetail, onCancel, onReprint }) {
   )
 }
 
-function OrderDetailModal({ order, gstInclusive, onClose, onReprint }) {
+function OrderDetailModal({ order, gstInclusive, onClose, onReprint, onRefund }) {
+  const canRefund = order
+    && order.status !== 'cancelled'
+    && order.payment_status === 'paid'
+    && order.payment_method === 'cash'
+    && refundedAmount(order) < payableAmount(order, gstInclusive)
+
   return (
     <Modal
       open={!!order}
@@ -268,23 +307,41 @@ function OrderDetailModal({ order, gstInclusive, onClose, onReprint }) {
               Reprint invoice
             </Button>
           )}
+          {canRefund && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                onClose()
+                onRefund(order)
+              }}
+              iconLeft={<RotateCcw className="h-4 w-4" />}
+              className="text-status-cancelled ring-status-cancelled/30 hover:bg-status-cancelled/5 hover:ring-status-cancelled/40"
+            >
+              Refund
+            </Button>
+          )}
         </>
       }
     >
       {order && (
         <div className="space-y-5">
           <div className="grid grid-cols-3 gap-3 text-sm">
-            <Info label="Status" value={<StatusBadge status={order.status} />} />
-            <Info label="Payment" value={<StatusBadge status={order.payment_status === 'paid' ? 'paid' : 'unpaid'} label={`${order.payment_method ?? '—'} · ${order.payment_status}`} size="sm" />} />
-            <Info label="Total" value={<MoneyText amount={payableAmount(order, gstInclusive)} className="font-display text-xl font-extrabold tabular-nums" />} />
+            <Info label="Status" value={<StatusBadge status={order.status} label={statusLabel(order.status)} className="font-bold" />} />
+            <Info label="Payment" value={<StatusBadge status={order.payment_status === 'paid' ? 'paid' : 'unpaid'} label={`${order.payment_method ?? '—'} · ${order.payment_status}`} size="sm" className="font-bold" />} />
+            <Info label="Total" value={<MoneyText amount={payableAmount(order, gstInclusive)} className="font-mono text-xl font-bold tabular-nums" />} />
           </div>
+          {refundedAmount(order) > 0 && (
+            <div className="rounded-lg bg-status-cancelled/10 p-3 text-sm font-semibold text-status-cancelled ring-1 ring-inset ring-status-cancelled/20">
+              Refunded <MoneyText amount={refundedAmount(order)} className="font-mono font-bold tabular-nums" />
+            </div>
+          )}
           <section>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-500">Items</p>
-            <ul className="divide-y divide-surface-line rounded-2xl bg-surface-100 px-4">
+            <p className="mb-2 text-sm font-semibold text-ink-700">Items</p>
+            <ul className="divide-y divide-surface-line rounded-lg bg-surface-100 px-4">
               {(order.order_items ?? []).map((oi) => (
-                <li key={oi.id} className="flex items-start justify-between gap-4 py-3 text-sm">
+                <li key={oi.id} className="flex items-start justify-between gap-4 py-3 text-sm font-medium">
                   <div className="min-w-0">
-                    <p className="font-semibold text-ink-900">
+                    <p className="font-bold text-ink-900">
                       <span className="tabular-nums">{oi.quantity}×</span> {oi.menu_items?.name ?? 'Item'}
                       {oi.variant_name && <span className="text-ink-600"> · {oi.variant_name}</span>}
                     </p>
@@ -297,7 +354,7 @@ function OrderDetailModal({ order, gstInclusive, onClose, onReprint }) {
                       </p>
                     )}
                   </div>
-                  <MoneyText amount={oi.subtotal} className="shrink-0 font-semibold tabular-nums" />
+                  <MoneyText amount={oi.subtotal} className="shrink-0 font-mono font-bold tabular-nums" />
                 </li>
               ))}
             </ul>
@@ -328,21 +385,21 @@ function CancelModal({
     <Modal
       open={!!order}
       onClose={onClose}
-      title={order ? `Cancel ${orderCode(order)}` : 'Cancel order'}
-      subtitle={paidCash ? 'Paid cash cancellations create a processed refund and audit event.' : 'This will mark the order cancelled.'}
+      title={order ? `${paidCash ? 'Refund' : 'Cancel'} ${orderCode(order)}` : 'Cancel order'}
+      subtitle={paidCash ? 'Refunding a paid cash order also cancels the active kitchen ticket and writes an audit event.' : 'This will mark the order cancelled.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Keep order</Button>
           <Button variant="danger" busy={busy} disabled={disabled} onClick={onConfirm}>
-            Cancel order
+            {paidCash ? 'Refund and cancel' : 'Cancel order'}
           </Button>
         </>
       }
     >
       {order && (
         <div className="space-y-4">
-          <div className="rounded-2xl bg-surface-100 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-500">Total</p>
+          <div className="rounded-lg bg-surface-100 p-4">
+            <p className="text-sm font-semibold text-ink-700">Total</p>
             <MoneyText amount={payable} className="font-display text-2xl font-extrabold tabular-nums text-ink-900" />
           </div>
           {paidCash && (
@@ -361,7 +418,7 @@ function CancelModal({
                 label="Reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Customer changed order"
+                placeholder="Customer requested refund"
                 required
               />
             </>
@@ -374,8 +431,8 @@ function CancelModal({
 
 function Info({ label, value }) {
   return (
-    <div className="rounded-2xl bg-surface-100 p-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-ink-500">{label}</p>
+    <div className="rounded-lg bg-surface-100 p-3">
+      <p className="text-sm font-semibold text-ink-700">{label}</p>
       <div className="mt-1">{value}</div>
     </div>
   )

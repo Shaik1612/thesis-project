@@ -16,6 +16,10 @@ supabase/functions/.env.local
 supabase/.branches/
 supabase/.temp/
 
+# Local AI/design-tool state
+.claude/
+.impeccable/
+
 # OS
 .DS_Store
 Thumbs.db

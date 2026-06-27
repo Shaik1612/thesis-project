@@ -39,10 +39,6 @@ serve(async (req) => {
     if (!channel || !['kiosk', 'web', 'desk'].includes(channel)) {
       return error(400, 'invalid channel')
     }
-    if (channel === 'web' && !customer_phone) {
-      return error(400, 'customer_phone is required for web orders')
-    }
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
     const { data: settings } = await supabase

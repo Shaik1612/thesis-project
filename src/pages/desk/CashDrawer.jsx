@@ -58,12 +58,12 @@ export default function CashDrawer() {
   const netDrawer = totalTendered - totalChange - totalRefunded
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-thin console-canvas">
-      <div className="mx-auto max-w-7xl space-y-5 px-6 py-6">
+    <div className="h-full overflow-y-auto bg-surface-50 scrollbar-thin">
+      <div className="mx-auto max-w-7xl space-y-4 px-6 py-5">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-700">Cash</p>
-            <h2 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">Drawer · today</h2>
+            <p className="text-sm font-semibold text-ink-700">Cash</p>
+            <h2 className="text-xl font-bold text-ink-900">Drawer today</h2>
             <p className="mt-1 text-sm text-ink-600">Every cash settlement processed at the desk since 00:00.</p>
           </div>
           <div className="flex items-center gap-2">
@@ -80,17 +80,16 @@ export default function CashDrawer() {
           </div>
         </header>
 
-        {/* Headline net drawer — the single most important number. */}
         <section className="grid grid-cols-12 gap-3">
-          <div className="amount-slab amount-slab-hot col-span-12 flex flex-col gap-1 rounded-xl px-6 py-5 md:col-span-6">
+          <div className="col-span-12 flex flex-col gap-1 rounded-lg bg-surface-0 px-5 py-4 ring-1 ring-inset ring-surface-line md:col-span-6">
             <div className="flex items-center justify-between">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-800">Net in drawer</p>
-              <Banknote className="h-5 w-5 text-amber-700" />
+              <p className="text-sm font-semibold text-ink-700">Net in drawer</p>
+              <Banknote className="h-5 w-5 text-ink-500" />
             </div>
-            <p className="readout font-display text-5xl font-extrabold tracking-tight text-ink-900">
+            <p className="font-mono text-3xl font-bold tabular-nums text-ink-900">
               ₹{netDrawer.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
-            <p className="font-mono text-[11px] font-medium uppercase tracking-wider text-ink-600">
+            <p className="text-xs font-medium text-ink-600">
               tendered − change − refunds
             </p>
           </div>
@@ -119,16 +118,17 @@ export default function CashDrawer() {
           />
         </section>
 
-        <div className="rounded-2xl bg-surface-0 ring-1 ring-inset ring-surface-line shadow-sm">
+        <div className="rounded-lg bg-surface-0 ring-1 ring-inset ring-surface-line">
           <div className="border-b border-surface-line px-5 py-3">
             <p className="font-display text-sm font-extrabold text-ink-900">Today's settlements</p>
-            <p className="font-mono text-[10px] font-medium uppercase tracking-wider text-ink-500">
+            <p className="text-xs font-medium text-ink-600">
               {filtered.length} payment{filtered.length === 1 ? '' : 's'} · most recent first
             </p>
           </div>
           <DataTable
             loading={loading}
             ariaLabel="Cash drawer payments"
+            headerClassName="border-b border-surface-line text-sm font-semibold text-ink-700"
             rows={filtered}
             rowKey={(p) => p.id}
             columns={[
@@ -168,9 +168,9 @@ export default function CashDrawer() {
 
 function DrawerStat({ label, value, icon: Icon, tone = 'ink', sub, className = '' }) {
   return (
-    <div className={['rounded-xl bg-surface-0 p-4 ring-1 ring-inset ring-surface-line', className].join(' ')}>
+    <div className={['rounded-lg bg-surface-0 p-4 ring-1 ring-inset ring-surface-line', className].join(' ')}>
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-500">{label}</p>
+        <p className="text-sm font-semibold text-ink-700">{label}</p>
         {Icon && (
           <Icon className={[
             'h-4 w-4',
@@ -180,10 +180,10 @@ function DrawerStat({ label, value, icon: Icon, tone = 'ink', sub, className = '
           ].join(' ')} />
         )}
       </div>
-      <p className="readout mt-1 font-display text-2xl font-extrabold tabular-nums text-ink-900">
+      <p className="mt-1 font-mono text-xl font-bold tabular-nums text-ink-900">
         <MoneyText amount={value} />
       </p>
-      {sub && <p className="mt-1 font-mono text-[10px] font-medium uppercase tracking-wider text-ink-400">{sub}</p>}
+      {sub && <p className="mt-1 text-xs font-medium text-ink-500">{sub}</p>}
     </div>
   )
 }

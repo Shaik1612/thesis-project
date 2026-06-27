@@ -65,12 +65,12 @@ export default function Dashboard() {
   return (
     <AdminPage
       title="Dashboard"
-      subtitle={`Performance for ${periodLabel.toLowerCase()} · realtime`}
+      subtitle={`Performance for ${periodLabel.toLowerCase()}.`}
       action={
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-status-ready/12 px-3 py-1 text-xs font-semibold text-status-ready">
-            <span className="h-1.5 w-1.5 rounded-full bg-status-ready live-dot text-status-ready" />
-            Live
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <span className="inline-flex items-center gap-2 rounded-md border border-surface-line bg-surface-0 px-2.5 py-1 text-xs font-medium text-ink-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-status-ready" />
+            Auto-refreshes every minute
           </span>
           <Tabs
             variant="segmented"
@@ -85,7 +85,7 @@ export default function Dashboard() {
       {loading ? (
         <div className="grid grid-cols-12 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} height={120} className="!rounded-2xl col-span-12 md:col-span-6 xl:col-span-3" />
+            <Skeleton key={i} height={116} className="!rounded-lg col-span-12 md:col-span-6 xl:col-span-3" />
           ))}
         </div>
       ) : (
@@ -148,7 +148,7 @@ export default function Dashboard() {
                             </div>
                             <div className="relative h-2 overflow-hidden rounded-full bg-surface-100">
                               <div
-                                className="absolute inset-y-0 left-0 rounded-full bg-brand-hot"
+                                className="absolute inset-y-0 left-0 rounded-full bg-brand-500"
                                 style={{ width: `${pct}%` }}
                               />
                             </div>
@@ -161,14 +161,14 @@ export default function Dashboard() {
             </div>
             <div className="col-span-12 xl:col-span-4">
               <AdminCard title="GST collected">
-                <MoneyText amount={stats.totalGst} className="block font-display text-4xl font-extrabold leading-tight text-ink-900" />
+                <MoneyText amount={stats.totalGst} className="block text-3xl font-semibold leading-tight text-ink-900" />
                 <p className="mt-1 text-sm text-ink-600">
                   across <span className="font-semibold tabular-nums text-ink-900">{stats.revenueOrders}</span> paid orders
                 </p>
               </AdminCard>
               <div className="mt-4">
                 <AdminCard title="Discounts">
-                  <MoneyText amount={stats.totalDiscounts} className="block font-display text-3xl font-extrabold leading-tight text-status-cancelled" />
+                  <MoneyText amount={stats.totalDiscounts} className="block text-2xl font-semibold leading-tight text-status-cancelled" />
                   <p className="mt-1 text-sm text-ink-600">applied across the period</p>
                 </AdminCard>
               </div>

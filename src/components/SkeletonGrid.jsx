@@ -7,7 +7,7 @@ import { Skeleton } from './ui'
 const PRESETS = {
   list:    'flex flex-col gap-3',
   grid:    'grid grid-cols-1 gap-3 sm:grid-cols-2',
-  kiosk:   'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3',
+  kiosk:   'grid grid-cols-1 gap-x-4 gap-y-7 sm:grid-cols-2 lg:grid-cols-3',
   compact: 'grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4',
 }
 
@@ -27,7 +27,7 @@ function CardSkeleton({ layout }) {
 
   return (
     <div className="overflow-hidden rounded-2xl bg-surface-0 ring-1 ring-inset ring-surface-line">
-      <Skeleton height={layout === 'kiosk' ? '180px' : '128px'} className="!rounded-none" />
+      <Skeleton height={layout === 'kiosk' ? '132px' : '128px'} className="!rounded-none" />
       <div className="space-y-2 p-3">
         <Skeleton height="14px" width="70%" />
         <Skeleton height="12px" width="45%" />

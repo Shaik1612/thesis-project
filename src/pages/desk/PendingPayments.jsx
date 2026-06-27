@@ -58,15 +58,14 @@ export default function PendingPayments() {
   }
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-thin console-canvas">
-      <div className="mx-auto max-w-7xl space-y-5 px-6 py-6">
-        {/* Header strip with marquee stats. */}
+    <div className="h-full overflow-y-auto bg-surface-50 scrollbar-thin">
+      <div className="mx-auto max-w-7xl space-y-4 px-6 py-5">
         <header className="grid grid-cols-12 gap-3">
           <div className="col-span-12 lg:col-span-6">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-700">Cash settlement</p>
-            <h2 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">Pending cash rail</h2>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-500">Cash settlement</p>
+            <h2 className="text-xl font-semibold text-ink-900">Pending cash</h2>
             <p className="mt-1 text-sm text-ink-600">
-              Every unpaid cash order lands here. The desk is the single physical cash point.
+              Unpaid cash orders from all channels.
             </p>
           </div>
           <PendingStat
@@ -101,7 +100,6 @@ export default function PendingPayments() {
           </Alert>
         )}
 
-        {/* Channel filter pills. */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <Filter className="h-4 w-4 shrink-0 text-ink-400" />
           {FILTERS.map((f) => {
@@ -113,9 +111,9 @@ export default function PendingPayments() {
                 type="button"
                 onClick={() => setFilter(f.id)}
                 className={[
-                  'inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors',
+                  'inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors',
                   active
-                    ? 'bg-ink-900 text-white'
+                    ? 'bg-brand-500 text-white shadow-brand'
                     : 'bg-surface-0 text-ink-700 ring-1 ring-inset ring-surface-line hover:bg-surface-100',
                 ].join(' ')}
               >
@@ -132,7 +130,7 @@ export default function PendingPayments() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-2xl bg-surface-0 p-6 ring-1 ring-inset ring-surface-line">
+          <div className="rounded-lg bg-surface-0 p-6 ring-1 ring-inset ring-surface-line">
             <EmptyState
               title="All clear"
               message="Nothing waiting on cash settlement. New tickets will appear here in real time."
@@ -217,14 +215,12 @@ function TicketCard({ order, gstInclusive, onSettle }) {
   return (
     <div
       className={[
-        'group relative flex flex-col overflow-hidden rounded-xl bg-surface-0 ring-1 ring-inset transition-all',
+        'group relative flex flex-col overflow-hidden rounded-lg bg-surface-0 ring-1 ring-inset transition-colors',
         urgent
-          ? 'ring-amber-500/50 shadow-[0_0_0_3px_rgba(245,158,11,0.08)]'
-          : 'ring-surface-line hover:shadow-md',
+          ? 'ring-amber-500/50'
+          : 'ring-surface-line hover:ring-ink-300',
       ].join(' ')}
     >
-      {/* Channel stripe — full color at rest; thinned on urgent so the amber
-          ring reads as the dominant urgency cue (one chromatic, one motion). */}
       <div
         className={[urgent ? 'h-0.5' : 'h-1.5', 'w-full'].join(' ')}
         style={stripeStyle(order.channel)}
@@ -246,13 +242,13 @@ function TicketCard({ order, gstInclusive, onSettle }) {
       </div>
 
       <div className="border-t border-dashed border-surface-line px-4 py-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-500">Due</p>
-        <p className="readout font-display text-3xl font-extrabold text-ink-900">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-500">Due</p>
+        <p className="font-mono text-2xl font-bold tabular-nums text-ink-900">
           ₹{amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </p>
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-surface-line bg-surface-50 px-4 py-2.5">
+      <div className="flex items-center justify-between gap-2 border-t border-surface-line bg-surface-50 px-4 py-4">
         <span
           className={[
             'inline-flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-wider',
@@ -265,9 +261,9 @@ function TicketCard({ order, gstInclusive, onSettle }) {
         </span>
         <Button
           variant="primary"
-          size="sm"
+          size="md"
           onClick={() => onSettle(order)}
-          iconRight={<ArrowRight className="h-3.5 w-3.5" />}
+          iconRight={<ArrowRight className="h-4 w-4" />}
         >
           Settle
         </Button>
@@ -279,16 +275,16 @@ function TicketCard({ order, gstInclusive, onSettle }) {
 function PendingStat({ label, value, tone = 'mute', className = '' }) {
   const slabClass =
     tone === 'hot'
-      ? 'amount-slab amount-slab-hot'
+      ? 'bg-surface-0 ring-1 ring-inset ring-amber-500/35'
       : tone === 'urgent'
-        ? 'amount-slab bg-status-cancelled/10 text-status-cancelled ring-1 ring-inset ring-status-cancelled/20'
-        : 'amount-slab bg-surface-0 ring-1 ring-inset ring-surface-line'
+        ? 'bg-status-cancelled/10 text-status-cancelled ring-1 ring-inset ring-status-cancelled/20'
+        : 'bg-surface-0 ring-1 ring-inset ring-surface-line'
 
   return (
-    <div className={[slabClass, 'flex flex-col justify-center rounded-xl px-4 py-3', className].join(' ')}>
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-500">{label}</p>
+    <div className={[slabClass, 'flex flex-col justify-center rounded-lg px-4 py-3', className].join(' ')}>
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-500">{label}</p>
       <p className={[
-        'font-display text-2xl font-extrabold leading-tight',
+        'font-mono text-xl font-bold leading-tight tabular-nums',
         tone === 'hot' ? 'text-amber-800' : tone === 'urgent' ? 'text-status-cancelled' : 'text-ink-900',
       ].join(' ')}>
         {value}
@@ -310,4 +306,3 @@ function whereLabel(order) {
 function stripeStyle(channel) {
   return { background: CHANNEL_HUE[channel] ?? CHANNEL_HUE.desk }
 }
-

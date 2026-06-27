@@ -38,6 +38,10 @@ export function humanizeError(error, fallback = 'Try again or call a manager.') 
   if (lower.includes('failed to fetch') || lower.includes('networkerror') || lower.includes('network request failed')) {
     return { message: 'Lost connection. Check the wifi and try again.', details: raw }
   }
+  // Supabase function cache / missing migration.
+  if (code === 'PGRST202' || lower.includes('could not find the function') || lower.includes('schema cache')) {
+    return { message: 'The refund database migration has not been applied yet. Apply the latest Supabase migrations, then refresh Desk.', details: raw }
+  }
   // Unique constraint — duplicate work.
   if (code === '23505' || lower.includes('duplicate key') || lower.includes('unique constraint')) {
     return { message: 'This ticket was already settled. Refresh the page to see the latest.', details: raw }

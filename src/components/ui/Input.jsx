@@ -66,7 +66,7 @@ const Input = forwardRef(function Input(
           aria-required={required || undefined}
           className={[
             'min-w-0 flex-1 bg-transparent font-body text-ink-900',
-            'placeholder:text-ink-400 focus:outline-none',
+            'placeholder:text-ink-400 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0',
           ].join(' ')}
           {...rest}
         />

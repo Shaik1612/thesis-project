@@ -1,20 +1,99 @@
 import { useMemo, useState } from 'react'
-import { ChevronUp, ShoppingBag } from 'lucide-react'
+import { ShoppingBag } from 'lucide-react'
 import {
-  BottomSheet,
-  Button,
   EmptyState,
   MoneyText,
   Tabs,
 } from '../../components/ui'
-import OrderSummary from '../../components/OrderSummary'
 import SkeletonGrid from '../../components/SkeletonGrid'
 import YouMayAlsoLike from '../../components/YouMayAlsoLike'
 import KioskItemCard from './KioskItemCard'
 
-// Three-column kiosk menu layout: vertical category rail, item grid, live cart.
-// Below 1180px the cart panel hides and a sticky bottom cart pill opens a
-// review sheet — keeps the layout usable in iPad portrait or smaller kiosks.
+const NON_VEG_TERMS = [
+  'chicken',
+  'mutton',
+  'fish',
+  'prawn',
+  'egg',
+  'meat',
+  'lamb',
+  'bacon',
+  'ham',
+  'pepperoni',
+  'sausage',
+  'beef',
+  'pork',
+  'turkey',
+  'seafood',
+  'nugget',
+  'strip',
+]
+
+function isNonVegItem(item) {
+  const text = `${item.name} ${item.description ?? ''}`.toLowerCase()
+  return NON_VEG_TERMS.some((term) => text.includes(term))
+}
+
+function itemMatchesDietaryFilter(item, filter) {
+  if (filter === 'veg') return !isNonVegItem(item)
+  if (filter === 'non-veg') return isNonVegItem(item)
+  return true
+}
+
+function DietaryIcon({ nonVeg }) {
+  return (
+    <span
+      className={[
+        'inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-2 bg-white',
+        nonVeg ? 'border-red-500' : 'border-emerald-600',
+      ].join(' ')}
+      aria-hidden
+    >
+      <span
+        className={[
+          nonVeg
+            ? 'h-0 w-0 border-x-[4px] border-b-[8px] border-x-transparent border-b-red-500'
+            : 'h-2 w-2 rounded-full bg-emerald-600',
+        ].join(' ')}
+      />
+    </span>
+  )
+}
+
+function DietaryFilter({ value, onChange }) {
+  const options = [
+    { value: 'all', label: 'All', nonVeg: null, activeClass: 'border-ink-900 bg-ink-900 text-white' },
+    { value: 'veg', label: 'Veg', nonVeg: false, activeClass: 'border-emerald-600 bg-emerald-50 text-emerald-800' },
+    { value: 'non-veg', label: 'Non veg', nonVeg: true, activeClass: 'border-red-500 bg-red-50 text-red-700' },
+  ]
+
+  return (
+    <div className="flex gap-2 overflow-x-auto py-1 no-scrollbar">
+      {options.map((option) => {
+        const active = option.value === value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            aria-pressed={active}
+            aria-label={`Show ${option.label} items`}
+            className={[
+              'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-extrabold shadow-sm transition active:scale-[0.98]',
+              active ? option.activeClass : 'border-surface-line bg-white text-ink-600 hover:border-ink-300',
+            ].join(' ')}
+          >
+            {option.nonVeg !== null && <DietaryIcon nonVeg={option.nonVeg} />}
+            <span>{option.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// Kiosk menu layout: vertical category rail plus a compact three-column item grid.
+// Cart review lives on its own kiosk step, so the menu has no cart column.
 
 export default function MenuLayout({
   categories,
@@ -23,17 +102,17 @@ export default function MenuLayout({
   activeCategory,
   onPickCategory,
   cart,
-  gstRate,
   onPickItem,
-  onCheckout,
-  payCtaLabel = 'Checkout',
+  onReviewCart,
 }) {
-  const [reviewOpen, setReviewOpen] = useState(false)
+  const [dietaryFilter, setDietaryFilter] = useState('all')
 
   const visibleItems = useMemo(() => {
-    if (!activeCategory) return items
-    return items.filter((i) => i.category_id === activeCategory)
-  }, [items, activeCategory])
+    const categoryItems = activeCategory
+      ? items.filter((i) => i.category_id === activeCategory)
+      : items
+    return categoryItems.filter((i) => itemMatchesDietaryFilter(i, dietaryFilter))
+  }, [items, activeCategory, dietaryFilter])
 
   const tabsItems = useMemo(
     () =>
@@ -48,15 +127,15 @@ export default function MenuLayout({
   const activeName = categories.find((c) => c.id === activeCategory)?.name ?? 'Menu'
 
   return (
-    <div className="flex h-full w-full flex-col xl:flex-row">
+    <div className="flex h-full w-full flex-col lg:flex-row">
       {/* Category rail. */}
-      <aside className="shrink-0 border-b border-surface-line bg-surface-0 xl:w-64 xl:border-b-0 xl:border-r">
-        <div className="hidden border-b border-surface-line/70 px-5 py-4 xl:block">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-500">Menu</p>
-          <p className="mt-0.5 font-display text-lg font-bold text-ink-900">Browse categories</p>
+      <aside className="shrink-0 border-b border-surface-line bg-surface-0 lg:w-56 lg:border-b-0 lg:border-r xl:w-64">
+        <div className="hidden border-b border-surface-line/70 px-5 py-4 lg:block">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">Menu</p>
+          <p className="mt-0.5 font-display text-lg font-bold text-ink-900">Categories</p>
         </div>
-        <nav className="overflow-x-auto xl:overflow-y-auto xl:px-3 xl:py-4">
-          <div className="hidden xl:block">
+        <nav className="overflow-x-auto lg:overflow-y-auto lg:px-3 lg:py-4">
+          <div className="hidden lg:block">
             <Tabs
               orientation="vertical"
               items={tabsItems}
@@ -65,7 +144,7 @@ export default function MenuLayout({
               ariaLabel="Categories"
             />
           </div>
-          <div className="xl:hidden">
+          <div className="lg:hidden">
             <Tabs
               variant="pill"
               items={tabsItems}
@@ -79,142 +158,66 @@ export default function MenuLayout({
       </aside>
 
       {/* Item grid. */}
-      <main className="flex-1 overflow-y-auto px-6 pb-32 pt-6 xl:pb-6">
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-600">
-              {visibleItems.length} item{visibleItems.length === 1 ? '' : 's'}
-            </p>
-            <h2 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">
-              {activeName}
-            </h2>
+      <main className="flex-1 overflow-y-auto px-6 pb-32 pt-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">
+                {activeName}
+              </h2>
+            </div>
+            <DietaryFilter value={dietaryFilter} onChange={setDietaryFilter} />
           </div>
+
+          {loading ? (
+            <SkeletonGrid count={8} layout="kiosk" />
+          ) : visibleItems.length === 0 ? (
+            <EmptyState title="Nothing here yet" message="Try another category or filter." />
+          ) : (
+            <div className="grid grid-cols-1 items-stretch gap-x-4 gap-y-7 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleItems.map((item) => (
+                <KioskItemCard
+                  key={item.id}
+                  item={item}
+                  qty={cart.quantityFor(item.id)}
+                  onTap={() => onPickItem(item)}
+                />
+              ))}
+            </div>
+          )}
+
+          {cart.items.length > 0 && (
+            <div className="mt-10">
+              <YouMayAlsoLike cart={cart} menuItems={items} onPick={onPickItem} />
+            </div>
+          )}
         </div>
-
-        {loading ? (
-          <SkeletonGrid count={9} layout="kiosk" />
-        ) : visibleItems.length === 0 ? (
-          <EmptyState title="Nothing here yet" message="Try another category." />
-        ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
-            {visibleItems.map((item) => (
-              <KioskItemCard
-                key={item.id}
-                item={item}
-                qty={cart.quantityFor(item.id)}
-                onTap={() => onPickItem(item)}
-              />
-            ))}
-          </div>
-        )}
-
-        {cart.items.length > 0 && (
-          <div className="mt-10">
-            <YouMayAlsoLike cart={cart} menuItems={items} onPick={onPickItem} />
-          </div>
-        )}
       </main>
 
-      {/* Persistent cart panel (xl+). */}
-      <aside className="hidden shrink-0 flex-col border-l border-surface-line bg-surface-0 xl:flex xl:w-[360px]">
-        <CartPanel
-          cart={cart}
-          gstRate={gstRate}
-          items={items}
-          onCheckout={onCheckout}
-          payCtaLabel={payCtaLabel}
-        />
-      </aside>
-
-      {/* Mobile / smaller kiosks: sticky cart bar that opens a review sheet. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4 safe-bottom xl:hidden">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-6 pb-5 safe-bottom">
         {cart.items.length > 0 && (
           <button
             type="button"
-            onClick={() => setReviewOpen(true)}
-            className="pointer-events-auto group flex w-full items-center justify-between gap-4 rounded-3xl bg-brand-hot px-5 py-4 text-white shadow-brand ring-1 ring-brand-700/30 active:scale-[0.99]"
+            onClick={onReviewCart}
+            className="pointer-events-auto ml-auto flex min-h-16 w-full max-w-[360px] items-center justify-between gap-3 rounded-2xl bg-brand-500 px-5 text-white shadow-lg ring-1 ring-brand-600 transition active:scale-[0.98]"
           >
-            <span className="inline-flex items-center gap-3">
-              <span className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/15">
-                <ShoppingBag className="h-5 w-5" />
-                <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1 text-xs font-extrabold tabular-nums text-brand-600">
-                  {cart.totalItems}
-                </span>
-              </span>
-              <span className="text-left">
-                <span className="block text-xs font-semibold uppercase tracking-wider text-white/85">Review &amp; pay</span>
-                <span className="block font-display text-lg font-extrabold tabular-nums">
-                  <MoneyText amount={cart.subtotal} />
-                </span>
+            <span className="min-w-0 text-left">
+              <span className="block text-[11px] font-extrabold uppercase tracking-wide text-white/80">View cart</span>
+              <span className="block font-display text-2xl font-extrabold leading-none tabular-nums">
+                <MoneyText amount={cart.subtotal} />
               </span>
             </span>
-            <ChevronUp className="h-6 w-6 transition-transform group-hover:-translate-y-0.5" />
+            <span className="relative inline-flex shrink-0">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/15">
+                <ShoppingBag className="h-5 w-5" />
+              </span>
+              <span className="absolute -right-2 -top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-ink-900 px-1 text-[11px] font-extrabold text-white">
+                {cart.totalItems}
+              </span>
+            </span>
           </button>
         )}
       </div>
-
-      <BottomSheet
-        open={reviewOpen}
-        onClose={() => setReviewOpen(false)}
-        title="Your bag"
-        subtitle={`${cart.totalItems} item${cart.totalItems === 1 ? '' : 's'}`}
-        snap="full"
-        footer={
-          <Button
-            variant="hero"
-            size="xl"
-            fullWidth
-            disabled={cart.items.length === 0}
-            onClick={() => { setReviewOpen(false); onCheckout() }}
-          >
-            {payCtaLabel} · <MoneyText amount={cart.subtotal} />
-          </Button>
-        }
-      >
-        <OrderSummary cart={cart} menuItems={items} gstRate={gstRate} stepperSize="md" hideTax />
-      </BottomSheet>
     </div>
-  )
-}
-
-function CartPanel({ cart, items, gstRate, onCheckout, payCtaLabel }) {
-  return (
-    <>
-      <div className="border-b border-surface-line px-5 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">Your bag</p>
-            <p className="font-display text-xl font-extrabold tracking-tight text-ink-900">
-              {cart.totalItems > 0 ? `${cart.totalItems} item${cart.totalItems === 1 ? '' : 's'}` : 'Empty'}
-            </p>
-          </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-soft text-brand-600">
-            <ShoppingBag className="h-5 w-5" />
-          </div>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-4">
-        {cart.items.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-4 py-12 text-center text-ink-500">
-            <div className="text-3xl">🍽️</div>
-            <p className="text-sm">Tap an item on the menu to add it to your bag.</p>
-          </div>
-        ) : (
-          <OrderSummary cart={cart} menuItems={items} gstRate={gstRate} stepperSize="md" hideTax />
-        )}
-      </div>
-      <div className="border-t border-surface-line bg-surface-0 px-5 py-5">
-        <Button
-          variant="hero"
-          size="xl"
-          fullWidth
-          disabled={cart.items.length === 0}
-          onClick={onCheckout}
-        >
-          {payCtaLabel} · <MoneyText amount={cart.subtotal} />
-        </Button>
-        <p className="mt-2 text-center text-xs text-ink-500">Pay before food is prepared</p>
-      </div>
-    </>
   )
 }

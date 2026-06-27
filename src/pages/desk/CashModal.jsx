@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Banknote, ArrowRight, Delete, CheckCircle2 } from 'lucide-react'
+import { ArrowRight, Delete } from 'lucide-react'
 import { Button, Modal } from '../../components/ui'
 import { CHANNEL_HUE } from './shared'
 
@@ -11,7 +11,6 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
 
   useEffect(() => { if (open) setTendered('') }, [open])
 
-  // Keyboard input — every operator should be able to type the amount.
   useEffect(() => {
     if (!open) return
     function onKey(e) {
@@ -42,80 +41,66 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
   function handlePad(k) {
     if (busy) return
     if (k === 'back') return setTendered((v) => v.slice(0, -1))
-    if (k === '.') {
-      return setTendered((v) => v.includes('.') ? v : (v || '0') + '.')
-    }
+    if (k === '.') return setTendered((v) => v.includes('.') ? v : (v || '0') + '.')
     setTendered((v) => (v + k).slice(0, 9))
   }
 
   return (
     <Modal open={open} onClose={onClose} size="xl" bare>
-      <div className="grid h-full grid-cols-[1fr_320px] overflow-hidden rounded-2xl bg-surface-0">
-        {/* Left: calculator face. */}
-        <div className="flex flex-col bg-ink-900 text-white">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-500 shadow-brand">
-                <Banknote className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 leading-tight">
-                <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">
-                  {subject?.channel && (
-                    <>
-                      <span
-                        aria-hidden
-                        className="h-1.5 w-1.5 rounded-full"
-                        style={{ background: CHANNEL_HUE[subject.channel] ?? CHANNEL_HUE.desk }}
-                      />
-                      <span className="font-mono">{subject.channel}</span>
-                      <span aria-hidden className="text-white/30">·</span>
-                    </>
-                  )}
-                  <span>{subject?.isNew ? 'New ticket · cash' : 'Settling cash'}</span>
-                </p>
-                <p className="mt-0.5 truncate font-display text-base font-extrabold">
-                  {subject?.isNew
-                    ? 'New ticket'
-                    : <><span className="font-mono">{subject?.code ?? '—'}</span>{subject?.where ? <span className="text-white/55"> · {subject.where}</span> : null}</>}
-                </p>
-              </div>
+      <div className="grid h-full grid-cols-[1fr_320px] overflow-hidden rounded-xl bg-surface-0">
+        <div className="flex flex-col border-r border-surface-line">
+          <div className="flex items-center justify-between gap-4 border-b border-surface-line px-6 py-4">
+            <div className="min-w-0 leading-tight">
+              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-ink-500">
+                {subject?.channel && (
+                  <>
+                    <span
+                      aria-hidden
+                      className="h-1.5 w-1.5 rounded-full"
+                      style={{ background: CHANNEL_HUE[subject.channel] ?? CHANNEL_HUE.desk }}
+                    />
+                    <span className="font-mono">{subject.channel}</span>
+                    <span aria-hidden className="text-ink-300">·</span>
+                  </>
+                )}
+                <span>{subject?.isNew ? 'New ticket · cash' : 'Settling cash'}</span>
+              </p>
+              <p className="mt-0.5 truncate text-base font-semibold text-ink-900">
+                {subject?.isNew
+                  ? 'New ticket'
+                  : <><span className="font-mono">{subject?.code ?? '—'}</span>{subject?.where ? <span className="text-ink-500"> · {subject.where}</span> : null}</>}
+              </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wider text-white/60 hover:bg-white/5 hover:text-white"
+              className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold uppercase tracking-wider text-ink-500 hover:bg-surface-100 hover:text-ink-900"
             >
               esc
             </button>
           </div>
 
-          {/* Big readouts. */}
-          <div className="grid grid-cols-2 gap-px bg-white/10">
-            <Readout label="Total due"  value={amount} tone="due" />
-            <Readout label="Tendered"   value={tenderedDisplay} tone="tendered" raw />
+          <div className="grid grid-cols-2 border-b border-surface-line">
+            <Readout label="Total due" value={amount} />
+            <Readout label="Tendered" value={tenderedDisplay} raw muted />
           </div>
 
-          {/* Tendered display (raw input). */}
-          <div className="border-b border-white/10 bg-black/30 px-6 py-3">
+          <div className="border-b border-surface-line bg-surface-50 px-6 py-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">Input</p>
-              <p className="readout text-2xl font-extrabold tabular-nums text-white">
-                ₹{tendered || '0'}
-                <span className="ml-1 inline-block h-5 w-0.5 animate-pulse bg-brand-400 align-middle" />
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-500">Input</p>
+              <p className="font-mono text-2xl font-bold tabular-nums text-ink-900">₹{tendered || '0'}</p>
             </div>
           </div>
 
-          {/* Quick denominations. */}
-          <div className="border-b border-white/10 px-6 py-3">
-            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">Common notes</p>
+          <div className="border-b border-surface-line px-6 py-3">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-ink-500">Common notes</p>
             <div className="flex flex-wrap gap-2">
               {QUICK.map((q) => (
                 <button
                   key={q}
                   type="button"
                   onClick={() => setTendered(String(q))}
-                  className="rounded-md bg-white/5 px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-white ring-1 ring-inset ring-white/10 transition-colors hover:bg-white/10"
+                  className="rounded-md bg-surface-100 px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-ink-800 ring-1 ring-inset ring-surface-line transition-colors hover:bg-surface-150"
                 >
                   ₹{q.toLocaleString('en-IN')}
                 </button>
@@ -123,14 +108,13 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
               <button
                 type="button"
                 onClick={() => setTendered(String(exact))}
-                className="rounded-md bg-brand-500/15 px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-amber-200 ring-1 ring-inset ring-brand-500/30 hover:bg-brand-500/25"
+                className="rounded-md bg-brand-500 px-3 py-1.5 font-mono text-xs font-bold tabular-nums text-white shadow-brand hover:bg-brand-600"
               >
                 Exact · ₹{exact.toLocaleString('en-IN')}
               </button>
             </div>
           </div>
 
-          {/* Number pad. */}
           <div className="flex-1 px-6 py-4">
             <div className="grid grid-cols-3 gap-1.5">
               {NUMPAD.map((k) => (
@@ -139,10 +123,11 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
                   type="button"
                   onClick={() => handlePad(k)}
                   className={[
-                    'flex h-12 items-center justify-center rounded-lg font-display text-lg font-bold transition-all active:scale-[0.97]',
+                    'flex h-12 items-center justify-center rounded-md text-lg font-semibold transition-colors',
+                    'focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-0',
                     k === 'back'
-                      ? 'bg-white/5 text-white/70 ring-1 ring-inset ring-white/10 hover:bg-white/10'
-                      : 'bg-white/10 text-white ring-1 ring-inset ring-white/10 hover:bg-white/20',
+                      ? 'bg-surface-50 text-ink-600 ring-1 ring-inset ring-surface-line hover:bg-surface-100'
+                      : 'bg-surface-100 text-ink-900 ring-1 ring-inset ring-surface-line hover:bg-surface-150',
                   ].join(' ')}
                   aria-label={k === 'back' ? 'Backspace' : k}
                 >
@@ -153,11 +138,10 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
           </div>
         </div>
 
-        {/* Right: change display + confirm. */}
         <div className="flex flex-col">
           <div className="border-b border-surface-line bg-surface-50 px-5 py-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-400">Status</p>
-            <p className="font-display text-base font-extrabold text-ink-900">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-400">Status</p>
+            <p className="text-base font-semibold text-ink-900">
               {tNum === 0 ? 'Awaiting cash' : enough ? 'Ready to confirm' : 'Short payment'}
             </p>
           </div>
@@ -165,7 +149,7 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
           <div className="flex-1 px-5 py-5">
             <div
               className={[
-                'rounded-xl px-5 py-6 text-center ring-1 ring-inset transition-colors',
+                'rounded-lg px-5 py-6 text-center ring-1 ring-inset transition-colors',
                 tNum === 0
                   ? 'bg-surface-100 text-ink-400 ring-surface-line'
                   : enough
@@ -173,18 +157,12 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
                     : 'bg-status-cancelled/10 text-status-cancelled ring-status-cancelled/20',
               ].join(' ')}
             >
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em]">
                 {tNum === 0 ? 'Change due' : enough ? 'Hand back' : 'Short by'}
               </p>
-              <p className="readout mt-1 font-display text-4xl font-extrabold leading-none">
+              <p className="mt-1 font-mono text-4xl font-bold leading-none tabular-nums">
                 {tNum === 0 ? '—' : `₹${Math.abs(enough ? change : -change).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
               </p>
-              {enough && tNum > 0 && (
-                <p className="mt-2 inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-wider">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Verified
-                </p>
-              )}
             </div>
 
             <div className="mt-5 space-y-2 rounded-lg bg-surface-50 px-4 py-3 ring-1 ring-inset ring-surface-line">
@@ -214,7 +192,7 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
               {enough ? 'Confirm cash received' : 'Tender more cash'}
             </Button>
             <p className="mt-2 text-center font-mono text-[10px] uppercase tracking-wider text-ink-400">
-              press <kbd className="kbd">enter</kbd> to confirm · <kbd className="kbd">esc</kbd> to cancel
+              Enter to confirm · Esc to cancel
             </p>
           </div>
         </div>
@@ -223,17 +201,11 @@ export default function CashModal({ open, onClose, onConfirm, amount, busy, subj
   )
 }
 
-function Readout({ label, value, tone, raw = false }) {
+function Readout({ label, value, raw = false, muted = false }) {
   return (
-    <div className={[
-      'flex flex-col gap-1 px-6 py-4',
-      tone === 'due' ? 'bg-black/40' : 'bg-black/20',
-    ].join(' ')}>
-      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/45">{label}</p>
-      <p className={[
-        'readout font-display text-3xl font-extrabold leading-none',
-        tone === 'due' ? 'text-white' : 'text-amber-200',
-      ].join(' ')}>
+    <div className={['flex flex-col gap-1 px-6 py-4', muted ? 'border-l border-surface-line bg-surface-50' : 'bg-surface-0'].join(' ')}>
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-500">{label}</p>
+      <p className="font-mono text-3xl font-bold leading-none tabular-nums text-ink-900">
         {raw ? `₹${value}` : `₹${Number(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
       </p>
     </div>
@@ -244,7 +216,7 @@ function SummaryRow({ label, value, emphasis = false, muted = false, tone = 'nor
   return (
     <div className="flex items-baseline justify-between gap-3 text-sm">
       <span className={[
-        emphasis ? 'font-display font-bold text-ink-900' : 'text-ink-600',
+        emphasis ? 'font-semibold text-ink-900' : 'text-ink-600',
         muted ? 'text-ink-500' : '',
       ].join(' ')}>
         {label}

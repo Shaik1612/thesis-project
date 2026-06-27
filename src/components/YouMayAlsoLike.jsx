@@ -8,7 +8,7 @@ import { fetchRecommendations } from '../lib/recommendations'
 // (with variants + removable ingredients) and route the tap through the
 // same add path as the menu — opening the config sheet for items that
 // have options, or calling onAdd directly otherwise.
-export default function YouMayAlsoLike({ cart, menuItems, onPick }) {
+export default function YouMayAlsoLike({ cart, menuItems, onPick, showAll = false, layout = 'scroll' }) {
   const [picks, setPicks] = useState([])
   const debounce = useRef(null)
 
@@ -24,8 +24,27 @@ export default function YouMayAlsoLike({ cart, menuItems, onPick }) {
     }
     return [...set]
   }, [cart.items, menuItems])
+  const fallbackPicks = useMemo(() => {
+    if (cartItemIds.length === 0) return []
+
+    const cartIds = new Set(cartItemIds)
+    const sameCategory = []
+    const otherItems = []
+
+    for (const item of menuItems) {
+      if (!item || item.available === false || cartIds.has(item.id)) continue
+      if (cartCategoryIds.includes(item.category_id)) sameCategory.push(item)
+      else otherItems.push(item)
+    }
+
+    return [...sameCategory, ...otherItems].slice(0, 6)
+  }, [cartCategoryIds, cartItemIds, menuItems])
 
   useEffect(() => {
+    if (showAll) {
+      setPicks([])
+      return
+    }
     if (cartItemIds.length === 0) {
       setPicks([])
       return
@@ -41,41 +60,59 @@ export default function YouMayAlsoLike({ cart, menuItems, onPick }) {
       const enriched = recs
         .map(r => menuItems.find(m => m.id === r.id) ?? r)
         .filter(Boolean)
-      setPicks(enriched)
+      const seen = new Set(enriched.map(item => item.id))
+      const filled = [
+        ...enriched,
+        ...fallbackPicks.filter(item => !seen.has(item.id)),
+      ]
+      setPicks(filled.slice(0, 6))
     }, 300)
     return () => clearTimeout(debounce.current)
-  }, [cartItemIds, cartCategoryIds, menuItems])
+  }, [cartItemIds, cartCategoryIds, fallbackPicks, menuItems, showAll])
 
-  if (picks.length === 0) return null
+  const allPicks = useMemo(
+    () => menuItems.filter((item) => item && item.available !== false),
+    [menuItems],
+  )
+  const displayPicks = showAll ? allPicks : picks.length > 0 ? picks : fallbackPicks
+
+  if (displayPicks.length === 0) return null
 
   return (
-    <section className="mt-4 border-t border-surface-line pt-4">
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-ink-600">
-        <Sparkles className="h-3.5 w-3.5 text-brand-500" />
+    <section className="mt-7 border-t border-surface-line pt-4">
+      <div className="mb-4 flex items-center gap-2 text-[14px] font-extrabold uppercase tracking-[0.12em] text-ink-600">
+        <Sparkles className="h-[18px] w-[18px] text-brand-500" />
         You may also like
       </div>
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        {picks.map(item => (
+      <div className={[
+        layout === 'grid'
+          ? 'grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5'
+          : '-mx-1 flex gap-4 overflow-x-auto px-1 pb-2 no-scrollbar',
+      ].join(' ')}>
+        {displayPicks.map(item => (
           <button
             key={item.id}
             type="button"
             onClick={() => onPick(item)}
-            className="group flex w-32 shrink-0 flex-col rounded-xl border border-surface-line bg-surface-0 p-2 text-left active:bg-surface-100"
+            className={[
+              'group flex flex-col rounded-2xl border border-surface-line bg-surface-0 p-2.5 text-left shadow-sm active:bg-surface-100',
+              layout === 'grid' ? 'min-w-0' : 'w-[126px] shrink-0',
+            ].join(' ')}
           >
-            <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-surface-100">
+            <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-surface-100">
               {item.photo_url ? (
                 <img src={item.photo_url} alt="" className="h-full w-full object-cover" loading="lazy" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-2xl text-ink-400">🍽️</div>
+                <div className="flex h-full w-full items-center justify-center text-2xl text-ink-400">+</div>
               )}
-              <div className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-white shadow">
-                <Plus className="h-4 w-4" />
+              <div className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-white shadow">
+                <Plus className="h-5 w-5" />
               </div>
             </div>
-            <div className="mt-2 line-clamp-2 text-xs font-medium text-ink-900">{item.name}</div>
+            <div className="mt-2.5 line-clamp-2 min-h-[2.4rem] text-[15px] font-semibold leading-tight text-ink-900">{item.name}</div>
             <MoneyText
               amount={item.variants?.length ? Math.min(...item.variants.map(v => Number(v.price))) : Number(item.price)}
-              className="mt-0.5 text-xs font-semibold text-ink-700"
+              className="mt-1.5 font-display text-[16px] font-extrabold leading-none text-ink-900"
             />
           </button>
         ))}

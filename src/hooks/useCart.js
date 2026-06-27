@@ -80,6 +80,37 @@ export function useCart(gstRate = 5, gstInclusive = false) {
     setItems(prev => prev.filter(i => i.lineKey !== lineKey))
   }, [])
 
+  const updateLineNote = useCallback((lineKey, note) => {
+    const cleanNote = String(note ?? '').slice(0, 140).trim()
+    setItems(prev => {
+      const target = prev.find(i => i.lineKey === lineKey)
+      if (!target) return prev
+
+      const nextCustomizations = normalizeCustomizations({
+        ...target.customizations,
+        special_instructions: cleanNote,
+      })
+      const nextLineKey = lineKeyFor(target.menuItemId, target.variantId, nextCustomizations)
+      const existing = prev.find(i => i.lineKey === nextLineKey && i.lineKey !== lineKey)
+
+      if (existing) {
+        return prev
+          .filter(i => i.lineKey !== lineKey)
+          .map(i =>
+            i.lineKey === nextLineKey
+              ? { ...i, quantity: i.quantity + target.quantity }
+              : i
+          )
+      }
+
+      return prev.map(i =>
+        i.lineKey === lineKey
+          ? { ...i, lineKey: nextLineKey, customizations: nextCustomizations }
+          : i
+      )
+    })
+  }, [])
+
   const removeOneForMenuItem = useCallback((menuItemId) => {
     setItems(prev => {
       const target = prev.find(i => i.menuItemId === menuItemId)
@@ -121,6 +152,7 @@ export function useCart(gstRate = 5, gstInclusive = false) {
     add,
     remove,
     removeLine,
+    updateLineNote,
     removeOneForMenuItem,
     clear,
     subtotal,

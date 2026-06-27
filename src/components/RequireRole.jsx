@@ -9,6 +9,11 @@ import AdminLogin from '../pages/admin/AdminLogin'
 export default function RequireRole({ roles, subtitle, children }) {
   const { user, role, loading, signOut } = useAuth()
 
+  async function handleSignOut() {
+    await signOut().catch(() => {})
+    window.location.reload()
+  }
+
   if (loading) return <LoadingSpinner fullscreen />
   if (!user)   return <AdminLogin subtitle={subtitle} />
 
@@ -22,7 +27,7 @@ export default function RequireRole({ roles, subtitle, children }) {
         </p>
         <button
           type="button"
-          onClick={signOut}
+          onClick={handleSignOut}
           className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white"
         >
           Sign out

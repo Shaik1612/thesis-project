@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  Plus, Wallet, Search, Trash2, Utensils, Receipt, Hash,
+  Plus, Wallet, Search, Trash2, Receipt, StickyNote,
   ShoppingBag, Armchair,
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -11,11 +11,13 @@ import { useOrders } from '../../hooks/useOrders'
 import ItemConfigSheet from '../../components/ItemConfigSheet'
 import CheckoutAdjustments from '../../components/CheckoutAdjustments'
 import {
-  Button, EmptyState, Input, KeyHint, MoneyText, QtyStepper, StatusBadge, Tooltip, useToast,
+  Button, EmptyState, Input, KeyHint, Modal, MoneyText, QtyStepper, StatusBadge, useToast,
 } from '../../components/ui'
 import { orderCode } from '../../lib/orderTotals'
 import { humanizeError } from './shared'
 import CashModal from './CashModal'
+
+const MAX_NOTE_LENGTH = 140
 
 export default function NewSale({ settings }) {
   const { categories, items, loading } = useMenu()
@@ -28,7 +30,9 @@ export default function NewSale({ settings }) {
   const [pay, setPay] = useState(null) // null | 'cash'
   const [submitting, setSubmitting] = useState(false)
   const [configItem, setConfigItem] = useState(null)
+  const [showAdjustments, setShowAdjustments] = useState(false)
   const [customerPhone, setCustomerPhone] = useState('')
+  const [editingNote, setEditingNote] = useState(null)
   const [adjustments, setAdjustments] = useState({
     pointsToRedeem: 0,
     couponCode: null,
@@ -45,7 +49,6 @@ export default function NewSale({ settings }) {
     ? adjustments.payable
     : cart.grandTotal
 
-  // `/` focuses search. F1 opens cash settlement.
   useEffect(() => {
     function onKey(e) {
       const target = e.target
@@ -92,7 +95,7 @@ export default function NewSale({ settings }) {
           customizations: i.customizations ?? {},
         })),
         p_tendered_amount: tenderedAmount,
-        p_customer_phone: adjustments.phone || null,
+        p_customer_phone: customerPhone || null,
         p_coupon_code: adjustments.couponCode ?? null,
         p_points_to_redeem: adjustments.pointsToRedeem || 0,
       })
@@ -101,6 +104,8 @@ export default function NewSale({ settings }) {
       push({ type: 'success', title: 'Ticket placed', message: `${orderCode(order)} sent to kitchen.` })
       cart.clear()
       setCustomerPhone('')
+      setEditingNote(null)
+      setShowAdjustments(false)
       setPay(null)
     } catch (e) {
       const { message, details } = humanizeError(e, 'The ticket couldn\'t reach the kitchen. Try again.')
@@ -111,12 +116,11 @@ export default function NewSale({ settings }) {
   }
 
   return (
-    <div className="grid h-full grid-cols-[200px_minmax(0,1fr)_440px] 2xl:grid-cols-[220px_minmax(0,1fr)_480px]">
-      {/* Category rail — vertical, dense. Keyboard-driven feel. */}
+    <div className="grid h-full grid-cols-[180px_minmax(0,1fr)_480px] 2xl:grid-cols-[190px_minmax(0,1fr)_520px]">
       <aside className="flex min-h-0 flex-col border-r border-surface-line bg-surface-0">
-        <div className="border-b border-surface-line px-4 py-3.5">
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-400">Categories</p>
-          <p className="font-display text-base font-extrabold text-ink-900">{categories.length} sections</p>
+        <div className="border-b border-surface-line px-4 py-3">
+          <p className="text-sm font-semibold text-ink-900">Categories</p>
+          <p className="text-xs text-ink-500">{categories.length} sections</p>
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-thin">
           <ul className="py-1.5">
@@ -129,20 +133,20 @@ export default function NewSale({ settings }) {
                     type="button"
                     onClick={() => setActiveCategory(c.id)}
                     className={[
-                      'group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                      'group flex w-full items-center gap-2.5 px-4 py-2.5 text-left transition-colors',
                       active
-                        ? 'bg-ink-900 text-white'
+                        ? 'bg-brand-500 text-white'
                         : 'text-ink-700 hover:bg-surface-100',
                     ].join(' ')}
                   >
                     <span className={[
                       'h-1.5 w-1.5 shrink-0 rounded-full transition-colors',
-                      active ? 'bg-brand-400' : 'bg-ink-300 group-hover:bg-brand-400',
+                      active ? 'bg-white' : 'bg-ink-300 group-hover:bg-brand-400',
                     ].join(' ')} />
                     <span className="flex-1 truncate text-sm font-semibold">{c.name}</span>
                     <span className={[
                       'font-mono text-[11px] font-bold tabular-nums',
-                      active ? 'text-white/60' : 'text-ink-400',
+                      active ? 'text-white/80' : 'text-ink-400',
                     ].join(' ')}>
                       {String(count).padStart(2, '0')}
                     </span>
@@ -153,26 +157,21 @@ export default function NewSale({ settings }) {
           </ul>
         </div>
         <div className="border-t border-surface-line bg-surface-50 px-4 py-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-ink-400">Shortcut</p>
-          <p className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-ink-600">
-            <KeyHint keys="/" /> search · <KeyHint keys="F1" /> cash
+          <p className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-600">
+            <KeyHint keys="/" /> Search
           </p>
         </div>
       </aside>
 
-      {/* Menu picker. */}
       <section className="flex min-w-0 flex-col overflow-hidden">
-        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-surface-line bg-surface-0 px-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100">
-            <Utensils className="h-4 w-4" />
-          </div>
+        <div className="flex h-16 shrink-0 items-center gap-3 border-b border-surface-line bg-surface-0 px-4">
           <div className="min-w-0 flex-1">
-            <p className="font-display text-sm font-extrabold text-ink-900">
+            <p className="text-base font-semibold text-ink-900">
               {query.trim()
                 ? `${list.length} search result${list.length === 1 ? '' : 's'}`
                 : `${list.length} item${list.length === 1 ? '' : 's'} available`}
             </p>
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-ink-400">
+            <p className="text-xs font-medium text-ink-500">
               {categories.find((c) => c.id === displayCat)?.name ?? 'all menu'}
             </p>
           </div>
@@ -181,14 +180,14 @@ export default function NewSale({ settings }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search items…"
+            placeholder="Search items"
             prefix={<Search className="h-4 w-4" />}
             suffix={<KeyHint keys="/" />}
             wrapperClassName="w-[300px]"
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 console-canvas">
+        <div className="flex-1 overflow-y-auto scrollbar-thin bg-surface-50 px-4 py-4">
           {loading ? (
             <p className="py-12 text-center text-sm text-ink-500">Loading menu…</p>
           ) : list.length === 0 ? (
@@ -212,73 +211,50 @@ export default function NewSale({ settings }) {
         )}
       </section>
 
-      {/* Docket / ticket panel. */}
-      <aside className="flex min-w-0 flex-col bg-surface-50 px-4 pt-4">
-        <div className="docket flex-1 overflow-hidden rounded-t-lg">
-          <div className="docket-perf-top" />
-          <div className="flex flex-col" style={{ height: 'calc(100% - 10px)' }}>
-            {/* Ticket header. */}
-            <header className="flex items-start justify-between gap-3 border-b border-dashed border-ink-300/40 px-5 py-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-400">Current ticket</p>
-                <p className="mt-0.5 flex items-center gap-1.5 font-mono text-lg font-bold tabular-nums text-ink-900">
-                  <Hash className="h-4 w-4 text-ink-400" />
-                  KOT-PENDING
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1.5">
-                <span className="channel-chip" data-channel="desk">Desk</span>
-                <span className="font-mono text-[11px] font-semibold text-ink-500">
-                  {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                </span>
-              </div>
-            </header>
+      <aside className="flex min-h-0 min-w-0 flex-col border-l border-surface-line bg-surface-0">
+        <div className="shrink-0 border-b border-surface-line px-5 py-5">
+          <div className="grid grid-cols-2 gap-3">
+            <TypePill
+              active={orderType === 'dine_in'}
+              onClick={() => setOrderType('dine_in')}
+              icon={Armchair}
+              label="Dine in"
+            />
+            <TypePill
+              active={orderType === 'takeaway'}
+              onClick={() => setOrderType('takeaway')}
+              icon={ShoppingBag}
+              label="Takeaway"
+            />
+          </div>
+        </div>
 
-            {/* Order type. Counter mode does not require a table number. */}
-            <div className="space-y-3 border-b border-dashed border-ink-300/40 px-5 py-4">
-              <div className="grid grid-cols-2 gap-2">
-                <TypePill
-                  active={orderType === 'dine_in'}
-                  onClick={() => setOrderType('dine_in')}
-                  icon={Armchair}
-                  label="Dine in"
-                />
-                <TypePill
-                  active={orderType === 'takeaway'}
-                  onClick={() => setOrderType('takeaway')}
-                  icon={ShoppingBag}
-                  label="Takeaway"
-                />
+        <div className="min-h-0 flex-1 overflow-y-auto scrollbar-thin px-5 py-4">
+          {cart.items.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-ink-500">
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-100 text-ink-400">
+                <Receipt className="h-6 w-6" />
               </div>
-              <p className="rounded-md bg-surface-100 px-3 py-2 text-xs font-semibold text-ink-600 ring-1 ring-inset ring-surface-line">
-                {orderType === 'dine_in'
-                  ? 'Counter dine-in: no table number needed.'
-                  : 'Packed as takeaway from the counter.'}
+              <p className="text-sm font-semibold text-ink-700">No items yet</p>
+              <p className="max-w-[200px] text-xs">
+                Tap an item from the menu, or press <KeyHint keys="/" /> to search.
               </p>
             </div>
-
-            {/* Items list. */}
-            <div className="flex-1 overflow-y-auto scrollbar-thin px-5 py-3">
-              {cart.items.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-ink-500">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-surface-100 text-ink-400">
-                    <Receipt className="h-5 w-5" />
-                  </div>
-                  <p className="font-display text-sm font-bold text-ink-700">No items yet</p>
-                  <p className="max-w-[200px] text-xs">
-                    Tap an item, or press <KeyHint keys="/" /> to search.
-                  </p>
-                </div>
-              ) : (
-                <ul className="flex flex-col gap-2.5">
-                  {cart.items.map((i, idx) => (
-                    <li key={i.lineKey} className="flex items-start gap-3 text-sm">
-                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-ink-900 font-mono text-[11px] font-bold tabular-nums text-white">
+          ) : (
+            <>
+              <ul className="flex flex-col gap-4">
+                {cart.items.map((i, idx) => {
+                  const note = i.customizations?.special_instructions ?? ''
+                  const editorId = noteEditorId(i)
+                  const noteOpen = editingNote === editorId
+                  return (
+                    <li key={i.lineKey} className="flex items-start gap-3">
+                      <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-500 font-mono text-[11px] font-bold tabular-nums text-white">
                         {String(idx + 1).padStart(2, '0')}
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
-                          <p className="font-semibold leading-snug text-ink-900">
+                          <p className="text-sm font-semibold leading-snug text-ink-900">
                             {i.name}
                             {i.variantName && <span className="font-normal text-ink-600"> · {i.variantName}</span>}
                           </p>
@@ -286,12 +262,11 @@ export default function NewSale({ settings }) {
                             ₹{(i.unitPrice * i.quantity).toLocaleString('en-IN')}
                           </span>
                         </div>
-                        <div className="mt-0.5 flex items-center justify-between gap-2">
+                        <div className="mt-2 flex items-center justify-between gap-2">
                           <span className="font-mono text-[10px] uppercase tracking-wider text-ink-500">
                             {i.quantity} × ₹{i.unitPrice.toLocaleString('en-IN')}
                           </span>
                           <QtyStepper
-                            size="sm"
                             count={i.quantity}
                             min={0}
                             trashAtMin
@@ -309,94 +284,138 @@ export default function NewSale({ settings }) {
                             }
                           />
                         </div>
-                        {(i.customizations?.removed_ingredients?.length > 0 || i.customizations?.special_instructions) && (
-                          <p className="mt-1 truncate font-mono text-[10px] text-ink-500">
+                        {(i.customizations?.removed_ingredients?.length > 0 || note) && (
+                          <p className="mt-1 truncate text-[11px] text-ink-500">
                             {i.customizations?.removed_ingredients?.length > 0 &&
-                              `– ${i.customizations.removed_ingredients.length} mod`}
-                            {i.customizations?.special_instructions &&
-                              ` · "${i.customizations.special_instructions}"`}
+                              `${i.customizations.removed_ingredients.length} mod`}
+                            {note && <span className="font-medium text-ink-700"> {note}</span>}
                           </p>
                         )}
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingNote(noteOpen ? null : editorId)}
+                            className={[
+                              'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold ring-1 ring-inset transition-colors',
+                              noteOpen || note
+                                ? 'bg-brand-50 text-brand-700 ring-brand-100'
+                                : 'bg-surface-100 text-ink-600 ring-surface-line hover:bg-surface-150',
+                            ].join(' ')}
+                          >
+                            <StickyNote className="h-3.5 w-3.5" />
+                            {note ? 'Edit note' : 'Add note'}
+                          </button>
+
+                          {noteOpen && (
+                            <div className="mt-2 rounded-lg bg-surface-50 p-2 ring-1 ring-inset ring-surface-line">
+                              <textarea
+                                value={note}
+                                readOnly
+                                rows={2}
+                                placeholder="Tap keys below"
+                                className="w-full resize-none rounded-md bg-surface-0 px-2.5 py-2 text-sm text-ink-900 ring-1 ring-inset ring-surface-line placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                              />
+                              <NoteTouchKeypad
+                                value={note}
+                                onChange={(next) => cart.updateLineNote(i.lineKey, next)}
+                                onDone={() => setEditingNote(null)}
+                              />
+                              <div className="mt-1 flex items-center justify-between gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => cart.updateLineNote(i.lineKey, '')}
+                                  className="text-[11px] font-semibold text-ink-500 hover:text-status-cancelled"
+                                >
+                                  Clear note
+                                </button>
+                                <span className="font-mono text-[10px] text-ink-400">
+                                  {note.length}/{MAX_NOTE_LENGTH}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+        </div>
 
-            {/* Adjustments — phone, loyalty, coupon. */}
+        <div className="shrink-0 border-t border-surface-line px-5 py-5">
+          <dl className="space-y-1.5 text-sm">
+            <LedgerRow label="Items">
+              <span className="font-mono tabular-nums">{cart.totalItems}</span>
+            </LedgerRow>
+            <LedgerRow label="Subtotal">
+              <span className="font-mono tabular-nums">
+                ₹{cart.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </LedgerRow>
+            <LedgerRow label={`GST ${settings.gstRate}%${settings.gstInclusive ? ' (incl.)' : ''}`}>
+              <span className="font-mono tabular-nums">
+                ₹{cart.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </LedgerRow>
+          </dl>
+
+          <div className="mt-3 flex items-end justify-between gap-3 border-t border-surface-line pt-3">
+            <div>
+              <p className="text-xs font-semibold text-ink-500">Grand total</p>
+              <p className="font-mono text-3xl font-bold tabular-nums text-ink-900">
+                ₹{payable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
             {cart.items.length > 0 && (
-              <div className="border-t border-dashed border-ink-300/40 px-5 py-4">
-                <CheckoutAdjustments
-                  phone={customerPhone}
-                  onPhoneChange={setCustomerPhone}
-                  subtotal={cart.grandTotal}
-                  onChange={setAdjustments}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  cart.clear()
+                  setCustomerPhone('')
+                  setEditingNote(null)
+                  setShowAdjustments(false)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-semibold text-ink-500 ring-1 ring-inset ring-surface-line hover:text-status-cancelled hover:ring-status-cancelled/30"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Clear
+              </button>
             )}
+          </div>
 
-            {/* Totals + action. */}
-            <div className="border-t border-dashed border-ink-300/40 px-5 py-4">
-              <dl className="space-y-1 text-sm">
-                <LedgerRow label="Items">
-                  <span className="font-mono tabular-nums">{cart.totalItems}</span>
-                </LedgerRow>
-                <LedgerRow label="Subtotal">
-                  <span className="font-mono tabular-nums">₹{cart.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </LedgerRow>
-                <LedgerRow label={`GST ${settings.gstRate}%${settings.gstInclusive ? ' (incl.)' : ''}`}>
-                  <span className="font-mono tabular-nums">₹{cart.gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </LedgerRow>
-                {adjustments.totalDiscount > 0 && (
-                  <LedgerRow label={adjustments.couponCode ? `Coupon ${adjustments.couponCode}` : 'Discount'}>
-                    <span className="font-mono tabular-nums text-emerald-700">−₹{adjustments.totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </LedgerRow>
-                )}
-              </dl>
-
-              <div className="mt-3 flex items-end justify-between gap-3 border-t-2 border-ink-900 pt-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-ink-500">Grand total</p>
-                  <p className="readout font-display text-3xl font-extrabold text-ink-900">
-                    ₹{payable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                </div>
-                {cart.items.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={cart.clear}
-                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-ink-500 ring-1 ring-inset ring-surface-line hover:text-status-cancelled hover:ring-status-cancelled/30"
-                  >
-                    <Trash2 className="h-3 w-3" /> Clear
-                  </button>
-                )}
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-2">
-                {settings.cashEnabled ? (
-                  <Tooltip content={canPlaceOrder ? 'Press F1' : 'Add at least one item'} side="top">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      fullWidth
-                      disabled={!canPlaceOrder}
-                      onClick={() => setPay('cash')}
-                      iconLeft={<Wallet className="h-4 w-4" />}
-                    >
-                      Settle in cash · ₹{payable.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
-                    </Button>
-                  </Tooltip>
-                ) : (
-                  <Button variant="secondary" size="lg" fullWidth disabled iconLeft={<Wallet className="h-4 w-4" />}>
-                    Cash disabled in settings
-                  </Button>
-                )}
-                <p className="text-center font-mono text-[10px] uppercase tracking-wider text-ink-400">
-                  UPI orders flow via kiosk / web channel
-                </p>
-              </div>
-            </div>
+          <div className="mt-3">
+            {cart.items.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowAdjustments(true)}
+                className="mb-2 w-full rounded-md px-3 py-2 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-surface-line hover:bg-surface-100"
+              >
+                {adjustments.totalDiscount > 0
+                  ? `Customer / coupon · −₹${adjustments.totalDiscount.toLocaleString('en-IN')}`
+                  : customerPhone
+                    ? `Customer · ${customerPhone}`
+                    : 'Customer / coupon'}
+              </button>
+            )}
+            {settings.cashEnabled ? (
+              <Button
+                variant="primary"
+                size="lg"
+                fullWidth
+                disabled={!canPlaceOrder || submitting}
+                onClick={() => setPay('cash')}
+                iconLeft={<Wallet className="h-5 w-5" />}
+              >
+                {canPlaceOrder
+                  ? `Take cash · ₹${payable.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+                  : 'Add items to start'}
+              </Button>
+            ) : (
+              <Button variant="secondary" size="lg" fullWidth disabled iconLeft={<Wallet className="h-5 w-5" />}>
+                Cash disabled in settings
+              </Button>
+            )}
           </div>
         </div>
       </aside>
@@ -415,6 +434,24 @@ export default function NewSale({ settings }) {
         busy={submitting}
       />
 
+      <Modal
+        open={showAdjustments}
+        onClose={() => setShowAdjustments(false)}
+        title="Customer / coupon"
+        subtitle={`Current total ₹${cart.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+        size="md"
+        footer={<Button variant="primary" onClick={() => setShowAdjustments(false)}>Done</Button>}
+      >
+        <CheckoutAdjustments
+          phone={customerPhone}
+          onPhoneChange={setCustomerPhone}
+          subtotal={cart.grandTotal}
+          onChange={setAdjustments}
+          showHints={false}
+          compact
+        />
+      </Modal>
+
       <ItemConfigSheet
         open={!!configItem}
         item={configItem}
@@ -431,15 +468,83 @@ function TypePill({ active, onClick, icon: Icon, label }) {
       type="button"
       onClick={onClick}
       className={[
-        'group flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-semibold transition-all',
+        'group flex items-center justify-center gap-2 rounded-md py-2.5 text-sm font-semibold transition-colors',
         active
-          ? 'bg-ink-900 text-white shadow-sm ring-1 ring-inset ring-ink-900'
+          ? 'bg-brand-500 text-white ring-1 ring-inset ring-brand-600'
           : 'bg-surface-100 text-ink-600 ring-1 ring-inset ring-surface-line hover:bg-surface-150',
       ].join(' ')}
     >
       <Icon className="h-4 w-4" />
       {label}
     </button>
+  )
+}
+
+function noteEditorId(item) {
+  const removed = [...(item.customizations?.removed_ingredients ?? [])].sort().join(',')
+  return `${item.menuItemId}::${item.variantId ?? ''}::${removed}`
+}
+
+function NoteTouchKeypad({ value, onChange, onDone }) {
+  const rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
+
+  const append = (token) => {
+    if (value.length >= MAX_NOTE_LENGTH) return
+    onChange(`${value}${token}`.slice(0, MAX_NOTE_LENGTH))
+  }
+
+  return (
+    <div className="mt-2 space-y-1.5" aria-label="Note keypad">
+      {rows.map((row) => (
+        <div key={row} className="grid grid-cols-10 gap-1">
+          {[...row].map((letter) => (
+            <button
+              key={letter}
+              type="button"
+              onClick={() => append(value.length === 0 || value.endsWith(' ') ? letter : letter.toLowerCase())}
+              className="flex h-8 items-center justify-center rounded-md bg-surface-0 text-xs font-bold text-ink-800 ring-1 ring-inset ring-surface-line transition-colors hover:bg-brand-50 hover:text-brand-700"
+            >
+              {letter}
+            </button>
+          ))}
+        </div>
+      ))}
+      <div className="grid grid-cols-[1fr_2fr_1fr] gap-1">
+        <button
+          type="button"
+          onClick={() => onChange(value.slice(0, -1))}
+          className="h-9 rounded-md bg-surface-0 text-xs font-bold text-ink-700 ring-1 ring-inset ring-surface-line hover:bg-surface-100"
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={() => append(' ')}
+          className="h-9 rounded-md bg-surface-0 text-xs font-bold text-ink-700 ring-1 ring-inset ring-surface-line hover:bg-surface-100"
+        >
+          Space
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="h-9 rounded-md bg-brand-500 text-xs font-bold text-white shadow-brand hover:bg-brand-600"
+        >
+          Done
+        </button>
+      </div>
+      <div className="grid grid-cols-6 gap-1">
+        {['-', '/', '&', '.', ',', '#'].map((token) => (
+          <button
+            key={token}
+            type="button"
+            onClick={() => append(token)}
+            className="h-8 rounded-md bg-surface-0 text-sm font-bold text-ink-700 ring-1 ring-inset ring-surface-line hover:bg-surface-100"
+          >
+            {token}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -483,10 +588,10 @@ function MenuTile({ item, qty, onAdd }) {
       disabled={unavailable}
       onClick={onAdd}
       className={[
-        'group relative flex h-[96px] flex-col justify-between rounded-lg bg-surface-0 p-3 text-left ring-1 ring-inset ring-surface-line transition-all',
+        'group relative flex h-[96px] flex-col justify-between rounded-md bg-surface-0 p-3 text-left ring-1 ring-inset ring-surface-line transition-colors',
         unavailable
           ? 'cursor-not-allowed opacity-50'
-          : 'hover:-translate-y-px hover:shadow-md hover:ring-brand-400 active:translate-y-0',
+          : 'hover:bg-surface-100 hover:ring-ink-300',
       ].join(' ')}
     >
       {qty > 0 && (
@@ -499,13 +604,13 @@ function MenuTile({ item, qty, onAdd }) {
           {item.name}
         </span>
         {hasVariants && (
-          <span className="mt-0.5 inline-block font-mono text-[9px] font-bold uppercase tracking-wider text-ink-400">
+          <span className="mt-1 inline-block font-mono text-[9px] font-bold uppercase tracking-wider text-ink-400">
             From
           </span>
         )}
       </div>
       <div className="flex items-end justify-between gap-2">
-        <MoneyText amount={displayPrice(item)} className="readout font-display text-base font-extrabold text-brand-700" />
+        <MoneyText amount={displayPrice(item)} className="font-mono text-base font-bold tabular-nums text-ink-900" />
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-surface-100 text-ink-700 transition-colors group-hover:bg-brand-500 group-hover:text-white">
           <Plus className="h-3.5 w-3.5" />
         </span>

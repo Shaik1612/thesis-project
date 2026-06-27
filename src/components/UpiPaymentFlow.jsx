@@ -56,12 +56,7 @@ export default function UpiPaymentFlow({
 
       setRazorpayOrderId(data.razorpay_order_id)
 
-      if (IS_DEV) {
-        setStep('waiting')
-        return
-      }
-
-      // Production: Razorpay Standard Checkout modal (works on desktop + mobile).
+      // Razorpay Standard Checkout modal (works on desktop + mobile, test or live keys).
       const loaded = await loadCheckoutScript()
       if (!loaded) throw new Error('could not load payment module')
       const checkoutKey = RAZORPAY_KEY_ID || data.razorpay_key_id
@@ -74,20 +69,9 @@ export default function UpiPaymentFlow({
         order_id: data.razorpay_order_id,
         name:     'DineFlow',
         handler:  (response) => handleCheckoutSuccess(response),
-        prefill:  { contact: phone ?? '' },
+        prefill:  { contact: phone ?? '', method: 'upi' },
         theme:    { color: '#EA580C' },
-        config: {
-          display: {
-            blocks: {
-              upi: {
-                name: 'Pay using UPI',
-                instruments: [{ method: 'upi' }],
-              },
-            },
-            sequence: ['block.upi'],
-            preferences: { show_default_blocks: true },
-          },
-        },
+        method:   { upi: true, card: true, netbanking: true, wallet: true },
         modal: {
           ondismiss: () => {
             setStep((prev) => {

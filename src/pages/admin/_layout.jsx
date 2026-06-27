@@ -4,28 +4,28 @@
 
 export function AdminPage({ title, subtitle, action, breadcrumbs, children, maxWidth = 'max-w-7xl' }) {
   return (
-    <div className={`mx-auto ${maxWidth} px-8 py-8`}>
-      <header className="flex flex-col gap-3 pb-6">
+    <div className={`mx-auto ${maxWidth} px-6 py-6 lg:px-8`}>
+      <header className="flex flex-col gap-2 border-b border-surface-line pb-5">
         {breadcrumbs && <div className="text-xs text-ink-500">{breadcrumbs}</div>}
-        <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">{title}</h1>
-            {subtitle && <p className="mt-1 text-sm text-ink-600">{subtitle}</p>}
+            <h1 className="text-2xl font-semibold tracking-tight text-ink-900">{title}</h1>
+            {subtitle && <p className="mt-1 max-w-2xl text-sm text-ink-600">{subtitle}</p>}
           </div>
           {action}
         </div>
       </header>
-      <div className="space-y-6">{children}</div>
+      <div className="space-y-5 pt-5">{children}</div>
     </div>
   )
 }
 
 export function AdminCard({ title, action, children, className = '', padding = 'p-5' }) {
   return (
-    <section className={['rounded-2xl bg-surface-0 ring-1 ring-inset ring-surface-line shadow-sm', className].join(' ')}>
+    <section className={['rounded-lg border border-surface-line bg-surface-0 shadow-sm', className].join(' ')}>
       {(title || action) && (
-        <header className="flex items-center justify-between gap-3 border-b border-surface-line px-5 py-3">
-          {title && <h3 className="font-display text-base font-bold tracking-tight text-ink-900">{title}</h3>}
+        <header className="flex items-center justify-between gap-3 border-b border-surface-line px-4 py-3">
+          {title && <h3 className="text-sm font-semibold text-ink-900">{title}</h3>}
           {action}
         </header>
       )}
@@ -40,24 +40,24 @@ export function StatCard({ label, value, hint, tone = 'default', icon = null, tr
     tone === 'bad'   ? 'text-status-cancelled' :
     tone === 'brand' ? 'text-brand-700' : 'text-ink-900'
   const iconBg =
-    tone === 'good'  ? 'bg-status-ready/12  text-status-ready' :
-    tone === 'bad'   ? 'bg-status-cancelled/12 text-status-cancelled' :
-    tone === 'brand' ? 'bg-brand-soft text-brand-700' :
-                       'bg-surface-100 text-ink-600'
+    tone === 'good'  ? 'bg-emerald-50 text-status-ready ring-emerald-200' :
+    tone === 'bad'   ? 'bg-red-50 text-status-cancelled ring-red-200' :
+    tone === 'brand' ? 'bg-orange-50 text-brand-700 ring-orange-200' :
+                       'bg-surface-50 text-ink-600 ring-surface-line'
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-surface-0 p-5 ring-1 ring-inset ring-surface-line shadow-sm">
+    <div className="relative overflow-hidden rounded-lg border border-surface-line bg-surface-0 p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-500">{label}</div>
-          <div className={['mt-1 font-display text-3xl font-extrabold tabular-nums leading-tight', accent].join(' ')}>{value}</div>
+          <div className="text-sm font-medium text-ink-600">{label}</div>
+          <div className={['mt-1 text-2xl font-semibold tabular-nums leading-tight', accent].join(' ')}>{value}</div>
           {hint && <div className="mt-1 text-xs text-ink-600">{hint}</div>}
         </div>
         {icon && (
-          <span className={['flex h-10 w-10 items-center justify-center rounded-2xl', iconBg].join(' ')}>{icon}</span>
+          <span className={['flex h-9 w-9 items-center justify-center rounded-lg ring-1 ring-inset', iconBg].join(' ')}>{icon}</span>
         )}
       </div>
       {trend != null && (
-        <div className="absolute inset-x-0 -bottom-1 h-12 opacity-90">{trend}</div>
+        <div className="absolute inset-x-0 -bottom-1 h-12 opacity-60">{trend}</div>
       )}
     </div>
   )
@@ -68,13 +68,13 @@ export function StatCard({ label, value, hint, tone = 'default', icon = null, tr
 export function AdminTable({ columns, rows, empty }) {
   if (!rows.length) {
     return (
-      <div className="rounded-2xl bg-surface-0 px-5 py-12 text-center text-sm text-ink-600 ring-1 ring-inset ring-surface-line">
+      <div className="rounded-lg border border-surface-line bg-surface-0 px-5 py-12 text-center text-sm text-ink-600">
         {empty ?? 'No data yet.'}
       </div>
     )
   }
   return (
-    <div className="overflow-hidden rounded-2xl bg-surface-0 ring-1 ring-inset ring-surface-line shadow-sm">
+    <div className="overflow-hidden rounded-lg border border-surface-line bg-surface-0 shadow-sm">
       <table className="w-full text-sm">
         <thead className="bg-surface-50 text-left text-[11px] font-semibold uppercase tracking-wider text-ink-500">
           <tr>
@@ -155,8 +155,8 @@ export function TextField(props) {
     <input
       {...props}
       className={[
-        'h-10 w-full rounded-lg bg-surface-100 px-3 text-sm placeholder:text-ink-400',
-        'ring-1 ring-inset ring-transparent transition-shadow',
+        'h-10 w-full rounded-md border border-surface-line bg-surface-0 px-3 text-sm placeholder:text-ink-400',
+        'transition-shadow',
         'focus:outline-none focus:bg-surface-0 focus:ring-brand-500',
         props.className ?? '',
       ].join(' ')}
@@ -169,8 +169,8 @@ export function Select(props) {
     <select
       {...props}
       className={[
-        'h-10 w-full appearance-none rounded-lg bg-surface-100 px-3 text-sm',
-        'ring-1 ring-inset ring-transparent transition-shadow',
+        'h-10 w-full appearance-none rounded-md border border-surface-line bg-surface-0 px-3 text-sm',
+        'transition-shadow',
         'focus:outline-none focus:bg-surface-0 focus:ring-brand-500',
         props.className ?? '',
       ].join(' ')}
@@ -183,8 +183,8 @@ export function TextArea(props) {
     <textarea
       {...props}
       className={[
-        'w-full rounded-lg bg-surface-100 px-3 py-2 text-sm placeholder:text-ink-400',
-        'ring-1 ring-inset ring-transparent transition-shadow',
+        'w-full rounded-md border border-surface-line bg-surface-0 px-3 py-2 text-sm placeholder:text-ink-400',
+        'transition-shadow',
         'focus:outline-none focus:bg-surface-0 focus:ring-brand-500',
         props.className ?? '',
       ].join(' ')}
@@ -198,12 +198,12 @@ export function SectionHeader({ title, subtitle, icon: Icon = null, action = nul
     <div className="flex items-end justify-between gap-3 border-b border-surface-line pb-3">
       <div className="flex items-center gap-3">
         {Icon && (
-          <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand-soft text-brand-700">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-surface-line bg-surface-0 text-ink-600">
             <Icon className="h-4 w-4" />
           </span>
         )}
         <div>
-          <h2 className="font-display text-lg font-bold tracking-tight">{title}</h2>
+          <h2 className="text-base font-semibold text-ink-900">{title}</h2>
           {subtitle && <p className="mt-0.5 text-xs text-ink-500">{subtitle}</p>}
         </div>
       </div>

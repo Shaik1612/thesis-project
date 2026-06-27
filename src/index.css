@@ -139,6 +139,12 @@
       theme('colors.surface.50');
   }
 
+  /* Admin uses a quieter paper-like canvas than the POS surface. */
+  .admin-surface {
+    background:
+      linear-gradient(to bottom, theme('colors.surface.50'), #F7F6F3 420px, theme('colors.surface.50'));
+  }
+
   /* —— Desk console (Service Floor) —— */
 
   /* Cross-hatched canvas — a faint grid like a docket pad. */

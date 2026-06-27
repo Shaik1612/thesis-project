@@ -44,6 +44,7 @@ export default function DataTable({
   dense = false,
   striped = false,
   className = '',
+  headerClassName = '',
   ariaLabel,
 }) {
   const [internalSort, setInternalSort] = useState({ by: null, dir: 'asc' })
@@ -113,7 +114,7 @@ export default function DataTable({
                     scope="col"
                     style={col.width ? { width: col.width } : undefined}
                     className={[
-                      'border-b border-surface-line text-[11px] font-semibold uppercase tracking-wider text-ink-500',
+                      headerClassName || 'border-b border-surface-line text-[11px] font-semibold uppercase tracking-wider text-ink-500',
                       headPad,
                       alignCls,
                     ].join(' ')}

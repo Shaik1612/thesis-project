@@ -75,7 +75,7 @@ export default function AdminRoutes() {
   })()
 
   return (
-    <div className="flex h-screen w-screen bg-surface-50 pos-surface">
+    <div className="flex h-screen w-screen bg-surface-50 admin-surface">
       <aside
         className={[
           'flex shrink-0 flex-col border-r border-surface-line bg-surface-0 transition-[width] duration-200',
@@ -83,13 +83,13 @@ export default function AdminRoutes() {
         ].join(' ')}
       >
         <div className="flex items-center gap-3 px-4 py-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-hot text-white shadow-brand">
-            <span className="font-display text-lg font-extrabold leading-none">D</span>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-surface-line bg-surface-50 text-ink-900">
+            <span className="text-base font-semibold leading-none">D</span>
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="font-display text-sm font-extrabold leading-none">DineFlow</div>
-              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600">Admin</div>
+              <div className="text-sm font-semibold leading-none">DineFlow</div>
+              <div className="mt-1 text-xs text-ink-500">Admin</div>
             </div>
           )}
         </div>
@@ -106,7 +106,7 @@ export default function AdminRoutes() {
                       'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
                       collapsed ? 'justify-center' : '',
                       isActive
-                        ? 'bg-brand-soft text-brand-700'
+                        ? 'bg-surface-100 text-ink-900'
                         : 'text-ink-700 hover:bg-surface-100',
                     ].join(' ')
                   }
@@ -131,8 +131,8 @@ export default function AdminRoutes() {
                 to="/admin/_components"
                 className={({ isActive }) =>
                   [
-                    'inline-flex items-center gap-2 rounded-lg px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] transition-colors',
-                    isActive ? 'text-brand-700' : 'text-ink-400 hover:text-ink-700',
+                    'inline-flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+                    isActive ? 'text-ink-900' : 'text-ink-400 hover:text-ink-700',
                   ].join(' ')
                 }
               >
@@ -156,7 +156,7 @@ export default function AdminRoutes() {
             {!collapsed && <span>Collapse</span>}
             {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
           </button>
-          <div className="rounded-xl bg-surface-100 px-3 py-2">
+          <div className="rounded-lg border border-surface-line bg-surface-50 px-3 py-2">
             {!collapsed && (
               <div className="truncate text-xs font-medium text-ink-700">{user.email}</div>
             )}
@@ -164,7 +164,7 @@ export default function AdminRoutes() {
               type="button"
               onClick={() => { signOut(); navigate('/admin') }}
               className={[
-                'mt-1 inline-flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-semibold text-ink-700 hover:bg-surface-150',
+                'mt-1 inline-flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold text-ink-700 hover:bg-surface-100',
                 collapsed ? 'justify-center' : '',
               ].join(' ')}
             >
@@ -176,7 +176,7 @@ export default function AdminRoutes() {
       </aside>
 
       <main className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className="border-b border-surface-line bg-surface-0/70 px-8 py-2 backdrop-blur">
+        <div className="border-b border-surface-line bg-surface-0 px-8 py-2">
           <nav aria-label="Breadcrumb" className="text-xs">
             {crumbs.map((c, i) => (
               <span key={i}>

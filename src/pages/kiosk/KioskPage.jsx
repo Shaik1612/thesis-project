@@ -9,6 +9,7 @@ import KioskFrame from './KioskFrame'
 import AttractScreen from './AttractScreen'
 import OrderTypeScreen from './OrderTypeScreen'
 import MenuLayout from './MenuLayout'
+import CartPage from './CartPage'
 import ItemQuickAdd from './ItemQuickAdd'
 import PhoneScreen from './PhoneScreen'
 import PaymentScreen from './PaymentScreen'
@@ -18,8 +19,7 @@ import useIdleReset from './useIdleReset'
 // Kiosk state machine: attract → order_type → menu → (phone) → payment → done.
 // The phone step is skipped when loyalty is disabled in settings.
 
-const STEPS_WITH_BACK = new Set(['order_type', 'menu', 'phone', 'payment'])
-const STEPS_WITH_EXIT = new Set(['order_type', 'menu', 'phone', 'payment'])
+const STEPS_WITH_BACK = new Set(['order_type', 'menu', 'cart', 'phone', 'payment'])
 
 export default function KioskPage() {
   const settings = useSettings()
@@ -53,6 +53,7 @@ export default function KioskPage() {
   const onCheckout = () => setStep(settings.loyaltyEnabled ? 'phone' : 'payment')
 
   const backFromMenu    = () => setStep('order_type')
+  const backFromCart    = () => setStep('menu')
   const backFromPhone   = () => setStep('menu')
   const backFromPayment = () => setStep(settings.loyaltyEnabled ? 'phone' : 'menu')
 
@@ -68,16 +69,10 @@ export default function KioskPage() {
     )
   }
 
-  const contextChip = step === 'menu' ? (
-    <span className="hidden items-center gap-2 rounded-full bg-brand-soft px-4 py-2 text-sm font-semibold text-brand-700 sm:inline-flex">
-      <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-      {orderType === 'dine_in' ? 'Dine in' : 'Takeaway'}
-    </span>
-  ) : null
-
   const onBack = STEPS_WITH_BACK.has(step) ? (
     step === 'order_type' ? () => setStep('attract') :
     step === 'menu'       ? backFromMenu :
+    step === 'cart'       ? backFromCart :
     step === 'phone'      ? backFromPhone :
     step === 'payment'    ? backFromPayment : undefined
   ) : undefined
@@ -86,8 +81,8 @@ export default function KioskPage() {
     <KioskFrame
       step={step}
       onBack={onBack}
-      onExit={STEPS_WITH_EXIT.has(step) ? resetAll : undefined}
-      contextChip={contextChip}
+      onCart={() => setStep('cart')}
+      cartCount={cart.totalItems}
     >
       {step === 'order_type' && (
         <OrderTypeScreen onPick={(v) => { setOrderType(v); setStep('menu') }} />
@@ -102,28 +97,20 @@ export default function KioskPage() {
             activeCategory={activeCategory ?? categories[0]?.id ?? null}
             onPickCategory={setActiveCategory}
             cart={cart}
-            gstRate={settings.gstRate}
             onPickItem={setPickedItem}
-            onCheckout={onCheckout}
-            payCtaLabel="Pay with UPI"
+            onReviewCart={() => setStep('cart')}
           />
-          {pickedItem && pickedItem.hasOptions ? (
-            <ItemConfigSheet
-              open
-              item={pickedItem}
-              onClose={() => setPickedItem(null)}
-              onAdd={(config) => cart.add(pickedItem, config)}
-            />
-          ) : pickedItem ? (
-            <ItemQuickAdd
-              item={pickedItem}
-              qty={cart.quantityFor(pickedItem.id)}
-              onAdd={() => cart.add(pickedItem)}
-              onRemove={() => cart.remove(pickedItem.id)}
-              onClose={() => setPickedItem(null)}
-            />
-          ) : null}
         </>
+      )}
+
+      {step === 'cart' && (
+        <CartPage
+          cart={cart}
+          items={items}
+          gstRate={settings.gstRate}
+          onAddItem={setPickedItem}
+          onCheckout={onCheckout}
+        />
       )}
 
       {step === 'phone' && (
@@ -138,11 +125,30 @@ export default function KioskPage() {
       {step === 'payment' && (
         <PaymentScreen
           cart={cart}
+          items={items}
+          gstRate={settings.gstRate}
           phone={phone}
           orderType={orderType}
           onConfirmed={() => setStep('done')}
         />
       )}
+
+      {pickedItem && pickedItem.hasOptions ? (
+        <ItemConfigSheet
+          open
+          item={pickedItem}
+          onClose={() => setPickedItem(null)}
+          onAdd={(config) => cart.add(pickedItem, config)}
+        />
+      ) : pickedItem ? (
+        <ItemQuickAdd
+          item={pickedItem}
+          qty={cart.quantityFor(pickedItem.id)}
+          onAdd={() => cart.add(pickedItem)}
+          onRemove={() => cart.remove(pickedItem.id)}
+          onClose={() => setPickedItem(null)}
+        />
+      ) : null}
 
     </KioskFrame>
   )

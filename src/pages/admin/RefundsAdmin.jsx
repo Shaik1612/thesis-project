@@ -78,11 +78,11 @@ export default function RefundsAdmin() {
   return (
     <AdminPage
       title="Refunds"
-      subtitle="Read-only feed of every refund Razorpay has issued or attempted."
+      subtitle="Read-only feed of Razorpay refund attempts."
       action={
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-status-ready/12 px-3 py-1 text-xs font-semibold text-status-ready">
-          <span className="h-1.5 w-1.5 rounded-full bg-status-ready live-dot" />
-          Live · {filtered.length}
+        <span className="inline-flex items-center gap-2 rounded-md border border-surface-line bg-surface-0 px-2.5 py-1 text-xs font-medium text-ink-600">
+          <span className="h-1.5 w-1.5 rounded-full bg-status-ready" />
+          {filtered.length} shown
         </span>
       }
     >

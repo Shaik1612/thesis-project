@@ -11,6 +11,14 @@ import PhoneField from './PhoneField'
 // values back via the onChange callback and pass them into their respective
 // order-creation entrypoints — never trust the client value alone.
 
+const PHONE_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back']
+const COUPON_ROWS = [
+  ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+  ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+  ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
+]
+
 export default function CheckoutAdjustments({
   phone,
   onPhoneChange,
@@ -18,6 +26,8 @@ export default function CheckoutAdjustments({
   showPhoneField = true,
   phoneRequired = false,
   kiosk = false,
+  showHints = true,
+  compact = false,
   onChange,
 }) {
   const settings = useSettings()
@@ -91,9 +101,10 @@ export default function CheckoutAdjustments({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointsToRedeem, couponCode, couponDiscount, pointsDiscount, payable])
 
-  async function applyCoupon() {
-    const code = couponInput.trim().toUpperCase()
+  async function applyCoupon(codeOverride = null) {
+    const code = (codeOverride ?? couponInput).trim().toUpperCase()
     if (!code) return
+    setCouponInput(code)
     setCouponBusy(true)
     setCouponError('')
     const { data, error } = await supabase.rpc('validate_coupon', {
@@ -118,35 +129,77 @@ export default function CheckoutAdjustments({
     setCouponError('')
   }
 
+  const quiet = !showHints && !compact
+  const panelClass = quiet
+    ? 'rounded-xl bg-surface-0 p-3 ring-1 ring-inset ring-surface-line'
+    : compact
+    ? 'rounded-lg bg-surface-0 p-3 ring-1 ring-inset ring-surface-line'
+    : 'rounded-2xl bg-surface-0 p-4 ring-1 ring-inset ring-surface-line'
+  const titleClass = compact || quiet
+    ? 'text-sm font-semibold text-ink-900'
+    : 'font-display text-sm font-extrabold text-ink-900'
+
+  function handlePhoneKey(key) {
+    if (key === 'back') return onPhoneChange((phone ?? '').slice(0, -1))
+    if (key === 'clear') return onPhoneChange('')
+    onPhoneChange(`${phone ?? ''}${key}`.replace(/\D/g, '').slice(0, 10))
+  }
+
+  function handleCouponKey(key) {
+    if (key === 'back') return setCouponInput((v) => v.slice(0, -1))
+    if (key === 'clear') return setCouponInput('')
+    setCouponInput((v) => `${v}${key}`.toUpperCase().slice(0, 20))
+  }
+
   return (
-    <div className="space-y-4">
-      {showPhoneField && loyaltyOn && (
-        <PhoneField
-          value={phone ?? ''}
-          onChange={onPhoneChange}
-          required={phoneRequired}
-          kiosk={kiosk}
-        />
+    <div className={quiet ? 'space-y-3' : 'space-y-4'}>
+      {showPhoneField && (loyaltyOn || compact) && (
+        <div>
+          <PhoneField
+            value={phone ?? ''}
+            onChange={onPhoneChange}
+            required={phoneRequired}
+            kiosk={kiosk}
+            size={compact ? 'lg' : undefined}
+            showHint={showHints}
+          />
+          {compact && (
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              {PHONE_KEYS.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handlePhoneKey(key)}
+                  className="flex h-12 items-center justify-center rounded-md bg-surface-100 font-mono text-base font-bold text-ink-900 ring-1 ring-inset ring-surface-line hover:bg-surface-150"
+                >
+                  {key === 'back' ? 'Back' : key === 'clear' ? 'Clear' : key}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       {loyaltyOn && (
-        <div className="rounded-2xl bg-surface-0 p-4 ring-1 ring-inset ring-surface-line">
+        <div className={panelClass}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-brand-600" />
-              <h3 className="font-display text-sm font-extrabold text-ink-900">Loyalty points</h3>
+              <h3 className={titleClass}>Loyalty points</h3>
             </div>
             <span className="rounded-md bg-surface-100 px-2 py-0.5 font-mono text-xs font-bold tabular-nums text-ink-800">
               {pointsLoading ? '…' : `${pointsBalance} pts`}
             </span>
           </div>
-          <p className="mt-1 text-xs text-ink-500">
-            {!phoneValid
-              ? 'Enter a 10-digit phone to see your balance.'
-              : maxRedeemable === 0
-                ? 'No points available to redeem on this order.'
-                : `Redeem up to ${maxRedeemable} pts (1 pt = ₹1).`}
-          </p>
+          {showHints && (
+            <p className="mt-1 text-xs text-ink-500">
+              {!phoneValid
+                ? 'Enter a 10-digit phone to see your balance.'
+                : maxRedeemable === 0
+                  ? 'No points available to redeem on this order.'
+                  : `Redeem up to ${maxRedeemable} pts (1 pt = ₹1).`}
+            </p>
+          )}
           {phoneValid && maxRedeemable > 0 && (
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-ink-800">
               <input
@@ -161,10 +214,10 @@ export default function CheckoutAdjustments({
         </div>
       )}
 
-      <div className="rounded-2xl bg-surface-0 p-4 ring-1 ring-inset ring-surface-line">
+      <div className={panelClass}>
         <div className="flex items-center gap-2">
           <TicketPercent className="h-4 w-4 text-emerald-600" />
-          <h3 className="font-display text-sm font-extrabold text-ink-900">Coupon code</h3>
+          <h3 className={titleClass}>Coupon code</h3>
         </div>
         {couponCode ? (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-emerald-50 px-3 py-2 ring-1 ring-inset ring-emerald-200">
@@ -182,16 +235,66 @@ export default function CheckoutAdjustments({
             </button>
           </div>
         ) : (
-          <div className="mt-3 flex gap-2">
-            <Input
-              value={couponInput}
-              onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-              placeholder="Enter code"
-              aria-label="Coupon code"
-            />
-            <Button variant="secondary" busy={couponBusy} onClick={applyCoupon} disabled={!couponInput.trim()}>
-              Apply
-            </Button>
+          <div className="mt-3 space-y-3">
+            <div className="flex gap-2">
+              <Input
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                placeholder="NEW10"
+                aria-label="Coupon code"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                size={compact ? 'lg' : undefined}
+                wrapperClassName="min-w-0 flex-1"
+              />
+              <Button variant="secondary" size={compact ? 'lg' : 'md'} busy={couponBusy} onClick={() => applyCoupon()} disabled={!couponInput.trim()} className="shrink-0">
+                Apply
+              </Button>
+            </div>
+            {compact && (
+              <>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyCoupon('NEW10')}
+                    className="h-11 rounded-md bg-brand-500 px-4 font-mono text-sm font-bold text-white shadow-brand hover:bg-brand-600"
+                  >
+                    NEW10
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCouponKey('clear')}
+                    className="h-11 rounded-md bg-surface-100 px-4 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-surface-line hover:bg-surface-150"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCouponKey('back')}
+                    className="h-11 rounded-md bg-surface-100 px-4 text-sm font-semibold text-ink-700 ring-1 ring-inset ring-surface-line hover:bg-surface-150"
+                  >
+                    Back
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {COUPON_ROWS.map((row) => (
+                    <div key={row.join('')} className="flex justify-center gap-1.5">
+                      {row.map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => handleCouponKey(key)}
+                          className="flex h-10 min-w-9 items-center justify-center rounded-md bg-surface-100 px-2 font-mono text-sm font-bold text-ink-900 ring-1 ring-inset ring-surface-line hover:bg-surface-150"
+                        >
+                          {key}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
         {couponError && (

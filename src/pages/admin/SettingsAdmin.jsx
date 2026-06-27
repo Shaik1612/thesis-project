@@ -126,7 +126,7 @@ export default function SettingsAdmin() {
               />
             </FormRow>
           </div>
-          <div className="mt-4 rounded-2xl bg-surface-100 px-4 py-3">
+          <div className="mt-4 rounded-lg border border-surface-line bg-surface-50 px-4 py-3">
             <Toggle
               label="Prices include GST"
               hint="Menu prices are tax-inclusive; system back-calculates for invoices."

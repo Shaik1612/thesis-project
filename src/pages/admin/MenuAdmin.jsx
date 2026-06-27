@@ -346,7 +346,7 @@ export default function MenuAdmin() {
                   onChange={(e) => setForm((f) => ({ ...f, photo_url: e.target.value }))}
                 />
               </FormRow>
-              <div className="rounded-2xl border border-surface-line p-3">
+              <div className="rounded-lg border border-surface-line p-3">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-500">Preview</p>
                 <div className="max-w-sm">
                   <FoodImage

@@ -49,14 +49,14 @@ export default function AuditPanel() {
   }, [events, query])
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-thin console-canvas">
-      <div className="mx-auto max-w-7xl space-y-5 px-6 py-6">
+    <div className="h-full overflow-y-auto bg-surface-50 scrollbar-thin">
+      <div className="mx-auto max-w-7xl space-y-4 px-6 py-5">
         <header className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-brand-700">Audit</p>
-            <h2 className="font-display text-3xl font-extrabold tracking-tight text-ink-900">Desk events</h2>
+            <p className="text-sm font-semibold text-ink-700">Audit</p>
+            <h2 className="text-xl font-bold text-ink-900">Desk events</h2>
             <p className="mt-1 text-sm text-ink-600">
-              Last 200 events. Cash settlements, refunds, and reprints — all timestamped and immutable.
+              Last 200 cash settlements, refunds, and reprints.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -76,6 +76,7 @@ export default function AuditPanel() {
         <DataTable
           loading={loading}
           ariaLabel="Desk audit events"
+          headerClassName="border-b border-surface-line text-sm font-semibold text-ink-700"
           rows={filtered}
           rowKey={(e) => e.id}
           columns={[
@@ -104,7 +105,7 @@ function Payload({ payload }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {entries.slice(0, 5).map(([k, v]) => (
-        <span key={k} className="rounded-full bg-surface-100 px-2 py-0.5 text-xs text-ink-700">
+        <span key={k} className="rounded-md bg-surface-100 px-2 py-0.5 text-xs text-ink-700">
           <span className="font-semibold">{k.replace(/_/g, ' ')}</span>: {String(v)}
         </span>
       ))}
